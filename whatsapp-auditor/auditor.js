@@ -21,6 +21,7 @@ const fs = require('fs');
 const path = require('path');
 const agenda = require('./agenda');
 const voz = require('./voz');
+const conhecimento = require('./conhecimento');
 require('dotenv').config();
 
 // ---------- Configuracao ----------
@@ -41,7 +42,15 @@ const CFG = {
   sweepMin: parseInt(process.env.AUDIT_SWEEP_MIN || '0', 10),
   // Maximo de conversas no relatorio de varredura.
   maxItens: parseInt(process.env.AUDIT_MAX_ITENS || '15', 10),
+  // Numero da Joseane (atendente). Mensagens dela sao TREINAMENTO, nao cliente.
+  atendente: (process.env.ATENDENTE_NUMERO || '').replace(/\D/g, ''),
 };
+
+// Numeros "internos" (treinam/comandam o HERUPU): a Joseane e o dono (destino).
+const INTERNOS = [CFG.atendente, CFG.destino].filter(Boolean);
+function ehInterno(numDigits) {
+  return INTERNOS.some((n) => numDigits && numDigits.includes(n));
+}
 
 if (!CFG.destino) {
   console.warn('[AVISO] AUDIT_TARGET nao definido no .env — os alertas nao terao para onde ir.');
@@ -83,26 +92,10 @@ function classificarLocal(texto) {
   return { tipo, urgencia, agendamento, resumo: (texto || '').slice(0, 120), sugestao: '' };
 }
 
-// ---------- Analise com o CLAUDE CLI (plano, sem custo OpenAI) ----------
-function analisarClaude(texto, remetente) {
+// ---------- Chamada generica ao CLAUDE CLI (plano, sem custo OpenAI) ----------
+// Retorna um objeto JSON (ou null). instrucao = o que fazer; conteudo = texto do usuario.
+function claudeJSON(instrucao, conteudo) {
   return new Promise((resolve) => {
-    const agora = new Date();
-    const agoraLocal = agora.toLocaleString('pt-BR', { timeZone: agenda.timezone() });
-    const instrucao =
-      'Voce e um auditor de atendimento da HERUPU. No stdin vem uma mensagem de WhatsApp de um cliente. ' +
-      'Hoje e ' + agoraLocal + ' (fuso ' + agenda.timezone() + ', offset ' + agenda.offset() + '). ' +
-      'Responda APENAS um JSON valido (sem texto antes ou depois) com as chaves: ' +
-      'tipo (financeiro|venda|suporte|reclamacao|agendamento|geral), ' +
-      'urgencia (baixa|normal|alta), ' +
-      'agendamento (true se o cliente pede/solicita um agendamento, horario ou atendimento; senao false), ' +
-      'data_iso (se o cliente propos uma data/hora, converta para ISO 8601 COM o offset ' + agenda.offset() +
-      ', ex.: "2026-08-05T14:00:00' + agenda.offset() + '"; se nao propos horario, use null), ' +
-      'procedimento (qual procedimento o cliente quer, dentre: ' + (agenda.textoProcedimentos() || 'nao especificado') +
-      '; use o nome mais proximo ou null), ' +
-      'duracao_min (duracao em minutos conforme o procedimento; se nao souber, null), ' +
-      'resumo (1 frase curta em pt-BR), ' +
-      'falar (1 frase natural, em pt-BR, dizendo QUEM esta pedindo e O QUE esta pedindo, como um secretario avisaria em voz alta), ' +
-      'sugestao (uma resposta educada, objetiva e pronta para enviar em pt-BR).';
     const args = ['-p', '--model', CFG.claudeModel];
     const opts = { timeout: 90000 };
     if (process.platform === 'win32') opts.shell = true; // resolve claude.cmd no Windows
@@ -127,11 +120,32 @@ function analisarClaude(texto, remetente) {
         done(m ? JSON.parse(m[0]) : null);
       } catch (e) { done(null); }
     });
-
-    // Envia instrucao + mensagem via stdin (sem problemas de escape)
-    child.stdin.write(instrucao + '\n\nMensagem de "' + remetente + '":\n' + texto);
+    child.stdin.write(instrucao + '\n\n' + conteudo);
     child.stdin.end();
   });
+}
+
+// Analise de mensagem de CLIENTE (usa o conhecimento aprendido com a Joseane)
+function analisarClaude(texto, remetente) {
+  const agoraLocal = new Date().toLocaleString('pt-BR', { timeZone: agenda.timezone() });
+  const procs = conhecimento.textoProcedimentos() || agenda.textoProcedimentos() || 'nao especificado';
+  const regras = conhecimento.textoRegras();
+  const instrucao =
+    'Voce e um auditor de atendimento da HERUPU. No stdin vem uma mensagem de WhatsApp de um cliente. ' +
+    'Hoje e ' + agoraLocal + ' (fuso ' + agenda.timezone() + ', offset ' + agenda.offset() + '). ' +
+    (regras ? 'Regras/preferencias que a Joseane ensinou: ' + regras + '. ' : '') +
+    'Responda APENAS um JSON valido (sem texto antes ou depois) com as chaves: ' +
+    'tipo (financeiro|venda|suporte|reclamacao|agendamento|geral), ' +
+    'urgencia (baixa|normal|alta), ' +
+    'agendamento (true se o cliente pede/solicita um agendamento, horario ou atendimento; senao false), ' +
+    'data_iso (se o cliente propos uma data/hora, converta para ISO 8601 COM o offset ' + agenda.offset() +
+    ', ex.: "2026-08-05T14:00:00' + agenda.offset() + '"; se nao propos horario, use null), ' +
+    'procedimento (qual procedimento o cliente quer, dentre: ' + procs + '; use o nome mais proximo ou null), ' +
+    'duracao_min (duracao em minutos conforme o procedimento; se nao souber, null), ' +
+    'resumo (1 frase curta em pt-BR), ' +
+    'falar (1 frase natural, em pt-BR, dizendo QUEM esta pedindo e O QUE esta pedindo, como um secretario avisaria em voz alta), ' +
+    'sugestao (uma resposta educada, objetiva e pronta para enviar em pt-BR).';
+  return claudeJSON(instrucao, 'Mensagem de "' + remetente + '":\n' + texto);
 }
 
 // Combina IA (Claude) com fallback local
@@ -141,6 +155,22 @@ async function analisar(texto, remetente) {
   return classificarLocal(texto);
 }
 
+// Interpreta uma mensagem de TREINAMENTO da Joseane e devolve o aprendizado
+function interpretarTreinamento(texto) {
+  const jaSei = conhecimento.textoProcedimentos();
+  const instrucao =
+    'Voce e o HERUPU, secretario da atendente Joseane. Ela esta te ENSINANDO como funciona o trabalho dela ' +
+    '(procedimentos, duracoes, horarios, regras de atendimento). No stdin vem a mensagem dela. ' +
+    (jaSei ? 'Voce ja sabe estes procedimentos: ' + jaSei + '. ' : '') +
+    'Extraia o aprendizado e conduza a conversa. Responda APENAS um JSON valido com: ' +
+    'procedimentos (objeto nome->minutos, so os que ela mencionou agora; senao {}), ' +
+    'regras (lista de regras/preferencias de atendimento que ela ensinou; senao []), ' +
+    'observacoes (lista de outras infos uteis; senao []), ' +
+    'resposta (mensagem calorosa e curta do HERUPU para a Joseane, confirmando o que entendeu e ' +
+    'fazendo A PROXIMA pergunta para entender melhor o trabalho dela).';
+  return claudeJSON(instrucao, texto);
+}
+
 // Avalia a agenda (se for agendamento) e devolve { blocoAgenda, sugestao, falaAgenda }
 function resolverResposta(nome, a) {
   let blocoAgenda = '';
@@ -148,7 +178,7 @@ function resolverResposta(nome, a) {
   let sugestao = a.sugestao || '(responda manualmente)';
   if (a.agendamento) {
     try {
-      const dur = a.duracao_min || agenda.duracaoDe(a.procedimento);
+      const dur = a.duracao_min || conhecimento.duracaoDe(a.procedimento) || agenda.duracaoDe(a.procedimento);
       const av = agenda.avaliarPedido({
         dataISO: a.data_iso || null,
         duracaoMin: dur,
@@ -251,6 +281,7 @@ async function auditoriaCompleta() {
   const pendentes = [];
   for (const chat of chats) {
     if (CFG.ignorarGrupos && chat.isGroup) continue;
+    if (chat.id && ehInterno(String(chat.id.user || ''))) continue; // pula Joseane/dono
     try {
       const msgs = await chat.fetchMessages({ limit: 1 });
       const last = msgs[0];
@@ -299,12 +330,34 @@ async function auditoriaCompleta() {
   console.log('[JARVIS] Auditoria concluida. Pendentes: ' + pendentes.length + ' | Agendamentos: ' + agendamentos);
 }
 
+// ---------- Treinamento: a Joseane ensina o HERUPU ----------
+async function processarTreinamento(msg, fromNum) {
+  const { texto } = await extrairTexto(msg); // transcreve se ela mandar audio
+  if (!texto.trim()) return;
+  console.log('[TREINAMENTO] recebido de ' + fromNum + ': ' + texto.slice(0, 60));
+  const up = await interpretarTreinamento(texto);
+  if (up) {
+    up._texto = texto;
+    conhecimento.aplicar(up);
+    const resposta = up.resposta ||
+      'Anotado! Pode me contar mais sobre como funcionam seus atendimentos?';
+    await client.sendMessage(fromNum + '@c.us', resposta);
+  } else {
+    await client.sendMessage(fromNum + '@c.us',
+      'Entendi. Me conta mais um pouco sobre seus atendimentos (procedimentos e quanto tempo cada um leva)?');
+  }
+}
+
 // ---------- Monitor em tempo real ----------
 client.on('message', async (msg) => {
   try {
     if (msg.fromMe || msg.isStatus) return;
     const chat = await msg.getChat();
     if (CFG.ignorarGrupos && chat.isGroup) return;
+
+    // Mensagem da Joseane/dono => modo TREINAMENTO (aprende), nao auditoria
+    const fromNum = (msg.from || '').replace(/\D/g, '');
+    if (ehInterno(fromNum)) { await processarTreinamento(msg, fromNum); return; }
 
     const { texto, ehAudio } = await extrairTexto(msg);
     if (!texto.trim()) return;
@@ -330,6 +383,21 @@ client.on('message', async (msg) => {
 // ---------- Inicializacao ----------
 client.on('ready', async () => {
   console.log('[JARVIS] Conectado ao WhatsApp. Modo: ' + CFG.modo + ' | Motor: Claude CLI (' + CFG.claudeModel + ').');
+
+  // Primeira vez: entrevista a Joseane para aprender o trabalho dela
+  if (CFG.atendente && conhecimento.vazio()) {
+    try {
+      await client.sendMessage(CFG.atendente + '@c.us',
+        'Oi Joseane! 👋 Sou o HERUPU, seu assistente de agendamentos. ' +
+        'Para eu te ajudar direitinho, me conta como funciona seu atendimento: ' +
+        'quais procedimentos você faz e quanto tempo cada um costuma durar? ' +
+        'Pode ir me ensinando aos poucos, por texto ou áudio — eu vou guardando tudo. 😊');
+      console.log('[JARVIS] Mensagem de entrevista enviada para a Joseane.');
+    } catch (e) {
+      console.error('[JARVIS] Nao consegui falar com a Joseane:', e.message);
+    }
+  }
+
   await auditoriaCompleta();
   if (CFG.sweepMin > 0) {
     console.log('[JARVIS] Varredura automatica a cada ' + CFG.sweepMin + ' min.');

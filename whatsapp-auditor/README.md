@@ -53,6 +53,22 @@ certa para checar a agenda:
 ```
 Ajuste com os procedimentos reais da Joseane. `padrao` é usado quando não dá para identificar.
 
+## Aprendizado — a Joseane ensina o HERUPU
+
+Em vez de configurar os procedimentos na mão, o HERUPU **aprende com a Joseane** e guarda tudo.
+
+- Preencha `ATENDENTE_NUMERO` no `.env` com o WhatsApp da Joseane.
+- Na primeira vez que ligar (sem nada aprendido ainda), o HERUPU **manda uma mensagem pra ela**
+  se apresentando e perguntando como funciona o trabalho dela.
+- Tudo que a Joseane responder (por **texto ou áudio**) — procedimentos, durações, regras de
+  atendimento — é interpretado pelo Claude e **salvo em `conhecimento.json`**.
+- A partir daí, esse conhecimento é usado nos agendamentos (duração certa por procedimento,
+  regras de atendimento nas respostas).
+- Mensagens vindas do número da Joseane (ou do dono, `AUDIT_TARGET`) são tratadas como
+  **treinamento/comando**, não como cliente. Ela pode continuar ensinando a qualquer momento.
+
+> `conhecimento.json` guarda dados do negócio e **não vai para o GitHub** (está no `.gitignore`).
+
 ## Voz — ouvir e falar
 
 - **Ouvir (transcrição de áudios):** controlada por `STT_ENGINE`. **Padrão: `local` (grátis).**
