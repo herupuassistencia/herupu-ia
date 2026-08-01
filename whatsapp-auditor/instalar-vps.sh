@@ -39,11 +39,17 @@ fi
 export PATH="$HOME/.local/bin:$PATH"
 
 log "5/6 Baixando/atualizando o projeto"
+# Enquanto o PR nao e mergeado na main, usamos a branch de desenvolvimento.
+BRANCH="${JARVIS_BRANCH:-claude/ola-mrew1b}"
+REPO="https://github.com/herupuassistencia/herupu-ia.git"
 DIR="$HOME/herupu-ia"
 if [ -d "$DIR/.git" ]; then
-  git -C "$DIR" pull --ff-only || true
+  git -C "$DIR" fetch origin "$BRANCH"
+  git -C "$DIR" checkout "$BRANCH"
+  git -C "$DIR" pull --ff-only origin "$BRANCH" || true
 else
-  git clone https://github.com/herupuassistencia/herupu-ia.git "$DIR"
+  git clone -b "$BRANCH" "$REPO" "$DIR" || git clone "$REPO" "$DIR"
+  git -C "$DIR" checkout "$BRANCH" 2>/dev/null || true
 fi
 cd "$DIR/whatsapp-auditor"
 
