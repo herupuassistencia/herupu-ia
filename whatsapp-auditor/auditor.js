@@ -18,6 +18,7 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const { spawn } = require('child_process');
 const path = require('path');
+const agenda = require('./agenda');
 require('dotenv').config();
 
 // ---------- Configuracao ----------
@@ -83,12 +84,18 @@ function classificarLocal(texto) {
 // ---------- Analise com o CLAUDE CLI (plano, sem custo OpenAI) ----------
 function analisarClaude(texto, remetente) {
   return new Promise((resolve) => {
+    const agora = new Date();
+    const agoraLocal = agora.toLocaleString('pt-BR', { timeZone: agenda.timezone() });
     const instrucao =
       'Voce e um auditor de atendimento da HERUPU. No stdin vem uma mensagem de WhatsApp de um cliente. ' +
+      'Hoje e ' + agoraLocal + ' (fuso ' + agenda.timezone() + ', offset ' + agenda.offset() + '). ' +
       'Responda APENAS um JSON valido (sem texto antes ou depois) com as chaves: ' +
       'tipo (financeiro|venda|suporte|reclamacao|agendamento|geral), ' +
       'urgencia (baixa|normal|alta), ' +
       'agendamento (true se o cliente pede/solicita um agendamento, horario ou atendimento; senao false), ' +
+      'data_iso (se o cliente propos uma data/hora, converta para ISO 8601 COM o offset ' + agenda.offset() +
+      ', ex.: "2026-08-05T14:00:00' + agenda.offset() + '"; se nao propos horario, use null), ' +
+      'duracao_min (duracao estimada em minutos, ou null), ' +
       'resumo (1 frase curta em pt-BR), ' +
       'sugestao (uma resposta educada, objetiva e pronta para enviar em pt-BR).';
     const args = ['-p', '--model', CFG.claudeModel];
@@ -129,17 +136,40 @@ async function analisar(texto, remetente) {
   return classificarLocal(texto);
 }
 
+// Avalia a agenda (se for agendamento) e devolve { blocoAgenda, sugestao }
+function resolverResposta(nome, a) {
+  let blocoAgenda = '';
+  let sugestao = a.sugestao || '(responda manualmente)';
+  if (a.agendamento) {
+    try {
+      const av = agenda.avaliarPedido({
+        dataISO: a.data_iso || null,
+        duracaoMin: a.duracao_min || null,
+        nomeCliente: nome,
+      });
+      blocoAgenda = av.bloco + '\n\n';
+      sugestao = av.resposta; // ja considera disponibilidade/conflito/sugestoes
+    } catch (e) {
+      blocoAgenda = '🗓️ (nao consegui avaliar a agenda: ' + e.message + ')\n\n';
+    }
+  }
+  return { blocoAgenda, sugestao };
+}
+
 // ---------- Formata o alerta ----------
 function montarAlerta(nome, a, prefixo) {
   const emoji = a.urgencia === 'alta' ? '🔴' : a.urgencia === 'baixa' ? '🟢' : '🟡';
   const tagAgenda = a.agendamento ? '📅 *AGENDAMENTO SOLICITADO*\n' : '';
+  const { blocoAgenda, sugestao } = resolverResposta(nome, a);
+
   return (
     (prefixo || '') + emoji + ' *AUDITORIA JARVIS*\n' +
     tagAgenda +
     '👤 De: ' + nome + '\n' +
     '🏷️ Tipo: ' + (a.tipo || 'geral') + '  |  Urgência: ' + (a.urgencia || 'normal') + '\n' +
     '📩 ' + (a.resumo || '') + '\n\n' +
-    '💬 *Sugestão de resposta:*\n' + (a.sugestao || '(responda manualmente)')
+    blocoAgenda +
+    '💬 *Sugestão de resposta:*\n' + sugestao
   );
 }
 
@@ -215,8 +245,9 @@ client.on('message', async (msg) => {
     await enviarAlerta(montarAlerta(nome, a, '🆕 '));
     console.log('[TEMPO REAL] ' + nome + ' | ' + a.tipo + '/' + a.urgencia + (a.agendamento ? ' | AGENDAMENTO' : ''));
 
-    if (CFG.modo === 'responder' && a.sugestao) {
-      await msg.reply(a.sugestao);
+    if (CFG.modo === 'responder') {
+      const { sugestao } = resolverResposta(nome, a);
+      if (sugestao) await msg.reply(sugestao);
     }
   } catch (e) {
     console.error('[JARVIS] Erro na mensagem:', e.message);
