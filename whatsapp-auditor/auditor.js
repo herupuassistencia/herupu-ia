@@ -44,6 +44,9 @@ const CFG = {
   maxItens: parseInt(process.env.AUDIT_MAX_ITENS || '15', 10),
   // Numero da Joseane (atendente). Mensagens dela sao TREINAMENTO, nao cliente.
   atendente: (process.env.ATENDENTE_NUMERO || '').replace(/\D/g, ''),
+  // Numero do WhatsApp a conectar via CODIGO DE PAREAMENTO (sem QR).
+  // Deve ser o numero do proprio aparelho que vai ser vinculado (DDI+DDD+numero).
+  pairNumero: (process.env.WHATSAPP_PAIR || '').replace(/\D/g, ''),
 };
 
 // Numeros "internos" (treinam/comandam o HERUPU): a Joseane e o dono (destino).
@@ -66,7 +69,25 @@ const client = new Client({
   },
 });
 
-client.on('qr', (qr) => {
+let pairingPedido = false;
+client.on('qr', async (qr) => {
+  // Modo CODIGO DE PAREAMENTO (sem QR) — muito melhor para servidor.
+  if (CFG.pairNumero && !pairingPedido) {
+    pairingPedido = true;
+    try {
+      const code = await client.requestPairingCode(CFG.pairNumero);
+      console.log('\n============================================');
+      console.log('  CODIGO DE PAREAMENTO: ' + code);
+      console.log('  --------------------------------------------');
+      console.log('  No celular a conectar, abra o WhatsApp e va em:');
+      console.log('  Aparelhos conectados > Conectar um aparelho >');
+      console.log('  "Conectar com numero de telefone" e digite o codigo.');
+      console.log('============================================\n');
+      return;
+    } catch (e) {
+      console.error('[JARVIS] Falha no codigo de pareamento (' + e.message + '). Mostrando QR:');
+    }
+  }
   console.log('\n[JARVIS] Escaneie este QR no WhatsApp (Aparelhos conectados):\n');
   qrcode.generate(qr, { small: true });
 });
