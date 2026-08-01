@@ -19,6 +19,7 @@ const qrcode = require('qrcode-terminal');
 const { spawn } = require('child_process');
 const path = require('path');
 const agenda = require('./agenda');
+const voz = require('./voz');
 require('dotenv').config();
 
 // ---------- Configuracao ----------
@@ -97,6 +98,7 @@ function analisarClaude(texto, remetente) {
       ', ex.: "2026-08-05T14:00:00' + agenda.offset() + '"; se nao propos horario, use null), ' +
       'duracao_min (duracao estimada em minutos, ou null), ' +
       'resumo (1 frase curta em pt-BR), ' +
+      'falar (1 frase natural, em pt-BR, dizendo QUEM esta pedindo e O QUE esta pedindo, como um secretario avisaria em voz alta), ' +
       'sugestao (uma resposta educada, objetiva e pronta para enviar em pt-BR).';
     const args = ['-p', '--model', CFG.claudeModel];
     const opts = { timeout: 90000 };
@@ -136,9 +138,10 @@ async function analisar(texto, remetente) {
   return classificarLocal(texto);
 }
 
-// Avalia a agenda (se for agendamento) e devolve { blocoAgenda, sugestao }
+// Avalia a agenda (se for agendamento) e devolve { blocoAgenda, sugestao, falaAgenda }
 function resolverResposta(nome, a) {
   let blocoAgenda = '';
+  let falaAgenda = '';
   let sugestao = a.sugestao || '(responda manualmente)';
   if (a.agendamento) {
     try {
@@ -148,12 +151,48 @@ function resolverResposta(nome, a) {
         nomeCliente: nome,
       });
       blocoAgenda = av.bloco + '\n\n';
+      falaAgenda = av.fala || '';
       sugestao = av.resposta; // ja considera disponibilidade/conflito/sugestoes
     } catch (e) {
       blocoAgenda = '🗓️ (nao consegui avaliar a agenda: ' + e.message + ')\n\n';
     }
   }
-  return { blocoAgenda, sugestao };
+  return { blocoAgenda, sugestao, falaAgenda };
+}
+
+// Frase que o "secretario" fala em voz alta
+function textoFalado(nome, a) {
+  let f = a.falar || (nome + ' enviou uma mensagem.');
+  if (a.ehAudio) f = 'Áudio de ' + (nome || 'um contato') + '. ' + f;
+  if (a.agendamento) {
+    const { falaAgenda } = resolverResposta(nome, a);
+    if (falaAgenda) f += ' ' + falaAgenda;
+  }
+  return f;
+}
+
+// Detecta se a mensagem e um audio (nota de voz ou arquivo de audio)
+function ehAudioMsg(msg) {
+  return msg.type === 'ptt' || msg.type === 'audio' ||
+    (msg.hasMedia && /audio|ogg/.test(msg.mimetype || ''));
+}
+
+// Extrai o texto de uma mensagem: transcreve se for audio
+async function extrairTexto(msg) {
+  if (ehAudioMsg(msg)) {
+    try {
+      const media = await msg.downloadMedia();
+      if (media && media.data) {
+        const buf = Buffer.from(media.data, 'base64');
+        const t = await voz.transcrever(buf, media.mimetype);
+        if (t) return { texto: t, ehAudio: true };
+      }
+    } catch (e) {
+      console.error('[JARVIS] Falha ao transcrever audio:', e.message);
+    }
+    return { texto: '(áudio recebido — não consegui transcrever)', ehAudio: true };
+  }
+  return { texto: msg.body || '', ehAudio: false };
 }
 
 // ---------- Formata o alerta ----------
@@ -194,8 +233,9 @@ async function auditoriaCompleta() {
       if (!last) continue;
       // "nao respondido" = tem mensagem nao lida OU a ultima msg NAO foi voce quem enviou
       const naoRespondido = (chat.unreadCount || 0) > 0 || !last.fromMe;
-      if (naoRespondido && (last.body || '').trim()) {
-        pendentes.push({ chat, texto: last.body, nome: chat.name || (last.author || last.from) });
+      const temConteudo = (last.body || '').trim() || ehAudioMsg(last);
+      if (naoRespondido && temConteudo) {
+        pendentes.push({ chat, msg: last, nome: chat.name || (last.author || last.from) });
       }
     } catch (_) { /* segue */ }
   }
@@ -216,9 +256,12 @@ async function auditoriaCompleta() {
 
   let agendamentos = 0;
   for (const p of lista) {
-    const a = await analisar(p.texto, p.nome);
+    const { texto, ehAudio } = await extrairTexto(p.msg);
+    if (!texto.trim()) continue;
+    const a = await analisar(texto, p.nome);
+    a.ehAudio = ehAudio;
     if (a.agendamento) agendamentos++;
-    await enviarAlerta(montarAlerta(p.nome, a));
+    await enviarAlerta(montarAlerta(p.nome, a, ehAudio ? '🎤 ' : ''));
   }
 
   await enviarAlerta(
@@ -226,6 +269,9 @@ async function auditoriaCompleta() {
     'Total pendentes: ' + pendentes.length + '\n' +
     '📅 Agendamentos solicitados: ' + agendamentos
   );
+  await voz.falar('Auditoria concluída. Encontrei ' + pendentes.length +
+    ' conversa' + (pendentes.length === 1 ? '' : 's') + ' com pedido não respondido, sendo ' +
+    agendamentos + ' de agendamento.');
   console.log('[JARVIS] Auditoria concluida. Pendentes: ' + pendentes.length + ' | Agendamentos: ' + agendamentos);
 }
 
@@ -235,15 +281,18 @@ client.on('message', async (msg) => {
     if (msg.fromMe || msg.isStatus) return;
     const chat = await msg.getChat();
     if (CFG.ignorarGrupos && chat.isGroup) return;
-    const texto = msg.body || '';
+
+    const { texto, ehAudio } = await extrairTexto(msg);
     if (!texto.trim()) return;
 
     const contato = await msg.getContact();
     const nome = contato.pushname || contato.number || msg.from;
 
     const a = await analisar(texto, nome);
-    await enviarAlerta(montarAlerta(nome, a, '🆕 '));
-    console.log('[TEMPO REAL] ' + nome + ' | ' + a.tipo + '/' + a.urgencia + (a.agendamento ? ' | AGENDAMENTO' : ''));
+    a.ehAudio = ehAudio;
+    await enviarAlerta(montarAlerta(nome, a, ehAudio ? '🎤 ' : '🆕 '));
+    await voz.falar(textoFalado(nome, a)); // secretario avisa em voz alta
+    console.log('[TEMPO REAL] ' + nome + (ehAudio ? ' (audio)' : '') + ' | ' + a.tipo + '/' + a.urgencia + (a.agendamento ? ' | AGENDAMENTO' : ''));
 
     if (CFG.modo === 'responder') {
       const { sugestao } = resolverResposta(nome, a);

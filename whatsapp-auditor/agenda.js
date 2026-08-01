@@ -117,6 +117,7 @@ function avaliarPedido({ dataISO, duracaoMin, nomeCliente }) {
     if (estaLivre(dt, dur)) {
       return {
         bloco: '🗓️ Agenda (' + quem + '): ✅ DISPONÍVEL em ' + fmtCurto(dt),
+        fala: 'O horário pedido, ' + fmtHumano(dt) + ', está livre na agenda da ' + quem + '.',
         resposta: 'Perfeito' + (cliente ? ', ' + cliente : '') + '! Consigo encaixar você com a ' + quem +
           ' em ' + fmtHumano(dt) + '. Posso confirmar esse horário?',
       };
@@ -126,6 +127,8 @@ function avaliarPedido({ dataISO, duracaoMin, nomeCliente }) {
     return {
       bloco: '🗓️ Agenda (' + quem + '): ❌ INDISPONÍVEL (' + motivo + ') para ' + fmtCurto(dt) +
         '\n   Sugestões livres: ' + (sug.map(fmtCurto).join('  |  ') || 'nenhuma nos próximos 14 dias'),
+      fala: 'O horário pedido está ' + (motivo === 'horário já ocupado' ? 'ocupado' : 'fora do expediente') +
+        '. Sugeri outros horários livres.',
       resposta: 'Obrigado' + (cliente ? ', ' + cliente : '') + '! Nesse horário a agenda da ' + quem +
         ' está ' + (motivo === 'horário já ocupado' ? 'ocupada' : 'fora do atendimento') +
         '. Consigo estes horários: ' + sug.map(fmtHumano).join('; ') + '. Qual fica melhor pra você?',
@@ -136,6 +139,7 @@ function avaliarPedido({ dataISO, duracaoMin, nomeCliente }) {
   const sug = proximosLivres(dur, 3);
   return {
     bloco: '🗓️ Agenda (' + quem + '): horários livres -> ' + (sug.map(fmtCurto).join('  |  ') || 'nenhum nos próximos 14 dias'),
+    fala: 'O cliente não indicou horário. Sugeri as próximas vagas livres da ' + quem + '.',
     resposta: 'Claro' + (cliente ? ', ' + cliente : '') + '! A ' + quem + ' tem estes horários disponíveis: ' +
       sug.map(fmtHumano).join('; ') + '. Qual prefere?',
   };

@@ -14,11 +14,33 @@ Você escaneia o QR **uma única vez**; depois a sessão fica salva e roda sozin
 ## O que ele faz
 
 1. **Auditoria completa**: varre as conversas e lista as que têm **pedido não respondido**.
-2. **Agendamentos**: identifica quem está **solicitando um horário/atendimento**.
-3. **Resposta sugerida**: para cada conversa, o Claude gera uma resposta pronta.
-4. **Relatório**: envia tudo para o **seu número** (`AUDIT_TARGET`).
-5. **Tempo real**: também monitora mensagens novas conforme chegam.
-6. Modo padrão **`avisar`** (você responde). Modo `responder`: ele responde sozinho (cuidado).
+2. **Agendamentos**: identifica quem está **solicitando um horário/atendimento** e **avalia contra a agenda da atendente (Joseane)** — se está livre, em conflito, ou sugere os melhores horários.
+3. **Ouve áudios** 🎧: transcreve as notas de voz que os clientes mandam e informa **quem** está pedindo e **o quê**.
+4. **Fala em voz alta** 🗣️: como um secretário, narra as solicitações pra você (sem precisar olhar a tela).
+5. **Resposta sugerida**: para cada conversa, o Claude gera uma resposta pronta (já com os horários, quando for agendamento).
+6. **Relatório**: envia tudo para o **seu número** (`AUDIT_TARGET`).
+7. **Tempo real**: também monitora mensagens novas conforme chegam.
+8. Modo padrão **`avisar`** (você responde). Modo `responder`: ele responde sozinho (cuidado).
+
+## Agenda (Joseane)
+
+O arquivo **`agenda.json`** define o expediente e os compromissos da atendente. Edite-o com os
+horários de trabalho e as reuniões já marcadas. Quando um cliente pede um horário, o HERUPU
+verifica disponibilidade e propõe alternativas automaticamente.
+
+## Voz — ouvir e falar
+
+- **Ouvir (transcrição de áudios):** controlada por `STT_ENGINE`.
+  - `openai` (Whisper API): custo baixíssimo (~centavos/min). Precisa de `OPENAI_API_KEY`.
+  - `local`: usa o comando `whisper` na máquina (grátis) — requer **ffmpeg** instalado.
+  - `auto` (padrão): usa OpenAI se houver chave, senão local.
+  - Obs.: a **análise do texto continua no Claude do seu plano** (sem custo). O OpenAI aqui é
+    usado *só* para transcrever áudio, e só se você escolher esse motor.
+- **Falar (secretário narra):** controlada por `VOZ_SAIDA=pc`.
+  - **Windows:** usa a voz do sistema (grátis). Para voz em português, instale um pacote de voz
+    pt-BR (Configurações › Hora e Idioma › Fala) e opcionalmente informe `VOZ_NOME`.
+  - **Linux (VPS):** instale `espeak-ng` (`sudo apt install espeak-ng`). Lembre que o VPS só
+    "fala" se tiver saída de áudio — em servidor sem som, use `VOZ_SAIDA=off` e leia o relatório.
 
 ---
 
@@ -71,6 +93,11 @@ pm2 startup
 | `AUDIT_MAX_ITENS` | Máximo de conversas detalhadas no relatório |
 | `AUDIT_IGNORE_GROUPS` | `true` para ignorar grupos |
 | `CHROME_PATH` | Só no Linux: caminho do Chromium |
+| `STT_ENGINE` | Transcrição de áudio: `auto` / `openai` / `local` / `off` |
+| `OPENAI_API_KEY` | Só para transcrição (se `openai`/`auto`) |
+| `WHISPER_BIN` / `WHISPER_MODEL` | Whisper local (se `STT_ENGINE=local`) |
+| `VOZ_SAIDA` | `pc` para falar em voz alta, `off` para só texto |
+| `VOZ_NOME` | (Windows) nome da voz do sistema, ex.: `Microsoft Maria Desktop` |
 
 ---
 
