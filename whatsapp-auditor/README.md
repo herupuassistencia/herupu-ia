@@ -45,6 +45,14 @@ janelas `[["09:00","18:00"]]`.
 **Compromissos** já marcados ficam em `compromissos` (início/fim em ISO 8601) e bloqueiam o
 horário. Remova o item de EXEMPLO e adicione os reais.
 
+**Procedimentos e duração:** cada atendimento pode ter uma duração diferente. Defina em
+`procedimentos` (nome → minutos). O HERUPU identifica o procedimento pedido e usa a duração
+certa para checar a agenda:
+```json
+"procedimentos": { "consulta": 30, "avaliacao": 60, "sessao": 60, "retorno": 30, "padrao": 60 }
+```
+Ajuste com os procedimentos reais da Joseane. `padrao` é usado quando não dá para identificar.
+
 ## Voz — ouvir e falar
 
 - **Ouvir (transcrição de áudios):** controlada por `STT_ENGINE`. **Padrão: `local` (grátis).**
@@ -90,10 +98,18 @@ horário. Remova o item de EXEMPLO e adicione os reais.
 
 ### No VPS Linux (Contabo) — RECOMENDADO (roda 24/7, PC pode desligar)
 
+**Jeito rápido — 1 comando faz quase tudo:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/herupuassistencia/herupu-ia/main/whatsapp-auditor/instalar-vps.sh | bash
+```
+Esse script instala dependências, Whisper, Node, Claude CLI, baixa o projeto, cria o `.env` e
+instala tudo. No fim, faltam só 2 passos interativos: `claude auth login` e `node auditor.js`
+(escanear o QR). Se preferir manual, siga os passos abaixo.
+
 **1. Instalar as dependências do sistema (uma vez):**
 ```bash
 sudo apt update
-sudo apt install -y chromium-browser ffmpeg espeak-ng python3-pip
+sudo apt install -y ffmpeg espeak-ng python3-pip
 pip install -U openai-whisper          # transcricao local (gratis)
 ```
 

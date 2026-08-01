@@ -4,6 +4,13 @@
   "offset": "-03:00",
   "duracaoPadraoMin": 60,
   "passoMin": 30,
+  "procedimentos": {
+    "consulta": 30,
+    "avaliacao": 60,
+    "sessao": 60,
+    "retorno": 30,
+    "padrao": 60
+  },
   "expediente": {
     "0": [],
     "1": [],

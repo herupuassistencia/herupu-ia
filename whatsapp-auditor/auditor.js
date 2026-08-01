@@ -97,7 +97,9 @@ function analisarClaude(texto, remetente) {
       'agendamento (true se o cliente pede/solicita um agendamento, horario ou atendimento; senao false), ' +
       'data_iso (se o cliente propos uma data/hora, converta para ISO 8601 COM o offset ' + agenda.offset() +
       ', ex.: "2026-08-05T14:00:00' + agenda.offset() + '"; se nao propos horario, use null), ' +
-      'duracao_min (duracao estimada em minutos, ou null), ' +
+      'procedimento (qual procedimento o cliente quer, dentre: ' + (agenda.textoProcedimentos() || 'nao especificado') +
+      '; use o nome mais proximo ou null), ' +
+      'duracao_min (duracao em minutos conforme o procedimento; se nao souber, null), ' +
       'resumo (1 frase curta em pt-BR), ' +
       'falar (1 frase natural, em pt-BR, dizendo QUEM esta pedindo e O QUE esta pedindo, como um secretario avisaria em voz alta), ' +
       'sugestao (uma resposta educada, objetiva e pronta para enviar em pt-BR).';
@@ -146,9 +148,10 @@ function resolverResposta(nome, a) {
   let sugestao = a.sugestao || '(responda manualmente)';
   if (a.agendamento) {
     try {
+      const dur = a.duracao_min || agenda.duracaoDe(a.procedimento);
       const av = agenda.avaliarPedido({
         dataISO: a.data_iso || null,
-        duracaoMin: a.duracao_min || null,
+        duracaoMin: dur,
         nomeCliente: nome,
       });
       blocoAgenda = av.bloco + '\n\n';

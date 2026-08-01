@@ -36,6 +36,27 @@ let AG = carregar();
 function recarregar() { AG = carregar(); return AG; }
 function atendente() { return AG.atendente || 'Atendente'; }
 function duracaoPadrao() { return AG.duracaoPadraoMin || 60; }
+
+// Duracao (min) conforme o procedimento identificado
+function duracaoDe(nome) {
+  if (nome && AG.procedimentos) {
+    const k = String(nome).toLowerCase().trim();
+    if (AG.procedimentos[k] != null) return AG.procedimentos[k];
+    for (const p of Object.keys(AG.procedimentos)) {
+      if (p !== 'padrao' && k.includes(p)) return AG.procedimentos[p];
+    }
+  }
+  return duracaoPadrao();
+}
+
+// Texto com os procedimentos conhecidos (para orientar o Claude)
+function textoProcedimentos() {
+  if (!AG.procedimentos) return '';
+  return Object.entries(AG.procedimentos)
+    .filter(([k]) => k !== 'padrao')
+    .map(([k, v]) => k + ' (~' + v + 'min)')
+    .join(', ');
+}
 function offset() { return AG.offset || '-03:00'; }
 function timezone() { return AG.timezone || 'America/Sao_Paulo'; }
 
@@ -166,6 +187,6 @@ function avaliarPedido({ dataISO, duracaoMin, nomeCliente }) {
 }
 
 module.exports = {
-  recarregar, atendente, duracaoPadrao, offset, timezone,
+  recarregar, atendente, duracaoPadrao, duracaoDe, textoProcedimentos, offset, timezone,
   estaLivre, proximosLivres, avaliarPedido, fmtCurto, fmtHumano,
 };
