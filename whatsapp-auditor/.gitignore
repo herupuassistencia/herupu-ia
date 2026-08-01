@@ -1,0 +1,5 @@
+node_modules/
+wa-session/
+.env
+*.log
+conhecimento.json

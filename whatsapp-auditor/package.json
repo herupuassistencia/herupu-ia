@@ -1,0 +1,14 @@
+{
+  "name": "herupu-jarvis-whatsapp-auditor",
+  "version": "1.0.0",
+  "description": "Auditor de WhatsApp headless para a HERUPU JARVIS: le mensagens, identifica e envia resposta sugerida.",
+  "main": "auditor.js",
+  "scripts": {
+    "start": "node auditor.js"
+  },
+  "dependencies": {
+    "whatsapp-web.js": "^1.26.0",
+    "qrcode-terminal": "^0.12.0",
+    "dotenv": "^16.4.5"
+  }
+}
