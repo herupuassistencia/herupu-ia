@@ -24,9 +24,26 @@ Você escaneia o QR **uma única vez**; depois a sessão fica salva e roda sozin
 
 ## Agenda (Joseane)
 
-O arquivo **`agenda.json`** define o expediente e os compromissos da atendente. Edite-o com os
-horários de trabalho e as reuniões já marcadas. Quando um cliente pede um horário, o HERUPU
-verifica disponibilidade e propõe alternativas automaticamente.
+O arquivo **`agenda.json`** define o expediente e os compromissos da atendente. Quando um cliente
+pede um horário, o HERUPU verifica disponibilidade e propõe alternativas automaticamente.
+
+**Expediente atual:** terça a sábado, 09:00–18:00 (domingo e segunda fechados).
+No `expediente`, cada dia usa o número da semana (`0`=domingo … `6`=sábado) e uma lista de
+janelas `[["09:00","18:00"]]`.
+
+**Exceções** (atendimentos fora do horário padrão) ficam em `excecoes`, por data `YYYY-MM-DD`:
+```json
+"excecoes": {
+  "2026-08-15": { "janelas": [["19:00", "21:00"]] },   // abre horário extra nesse dia
+  "2026-12-25": { "fechado": true }                     // fecha o dia inteiro
+}
+```
+- `janelas` **adiciona** horários extras ao expediente normal daquele dia (ou abre um dia
+  normalmente fechado, ex.: uma segunda).
+- `fechado: true` fecha o dia (folga/feriado).
+
+**Compromissos** já marcados ficam em `compromissos` (início/fim em ISO 8601) e bloqueiam o
+horário. Remova o item de EXEMPLO e adicione os reais.
 
 ## Voz — ouvir e falar
 

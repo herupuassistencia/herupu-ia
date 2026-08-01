@@ -51,13 +51,33 @@ function hhmmParaMin(hhmm) {
   return h * 60 + m;
 }
 
-// Slot [inicio, fim) cabe em alguma janela de expediente do dia?
+// Data local no formato YYYY-MM-DD (para procurar excecoes do dia)
+function dataLocalStr(date) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone(), year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(date);
+}
+
+// Janelas de atendimento validas no dia (expediente padrao + excecoes)
+//   excecoes[data] = { fechado: true }            -> fecha o dia
+//   excecoes[data] = { janelas: [["19:00","21:00"]] } -> ADICIONA horario extra
+function janelasDoDia(date) {
+  const pI = partesLocais(date);
+  let janelas = (AG.expediente && AG.expediente[String(pI.dow)]) || [];
+  const exc = AG.excecoes && AG.excecoes[dataLocalStr(date)];
+  if (exc) {
+    if (exc.fechado) janelas = [];
+    if (Array.isArray(exc.janelas)) janelas = janelas.concat(exc.janelas);
+  }
+  return janelas;
+}
+
+// Slot [inicio, fim) cabe em alguma janela de atendimento do dia?
 function dentroExpediente(inicio, fim) {
   const pI = partesLocais(inicio);
-  const janelas = (AG.expediente && AG.expediente[String(pI.dow)]) || [];
   const durMin = Math.round((fim - inicio) / 60000);
   const fimMin = pI.min + durMin;
-  return janelas.some(([ini, f]) => pI.min >= hhmmParaMin(ini) && fimMin <= hhmmParaMin(f));
+  return janelasDoDia(inicio).some(([ini, f]) => pI.min >= hhmmParaMin(ini) && fimMin <= hhmmParaMin(f));
 }
 
 // Conflito com algum compromisso existente?
