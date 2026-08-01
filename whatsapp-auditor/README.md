@@ -30,12 +30,23 @@ verifica disponibilidade e propõe alternativas automaticamente.
 
 ## Voz — ouvir e falar
 
-- **Ouvir (transcrição de áudios):** controlada por `STT_ENGINE`.
-  - `openai` (Whisper API): custo baixíssimo (~centavos/min). Precisa de `OPENAI_API_KEY`.
-  - `local`: usa o comando `whisper` na máquina (grátis) — requer **ffmpeg** instalado.
-  - `auto` (padrão): usa OpenAI se houver chave, senão local.
-  - Obs.: a **análise do texto continua no Claude do seu plano** (sem custo). O OpenAI aqui é
-    usado *só* para transcrever áudio, e só se você escolher esse motor.
+- **Ouvir (transcrição de áudios):** controlada por `STT_ENGINE`. **Padrão: `local` (grátis).**
+  - A **análise do texto continua no Claude do seu plano** (sem custo). O Whisper é usado só
+    para transformar o áudio em texto.
+  - **Instalar o Whisper local (uma vez):**
+    ```bash
+    # Windows (PowerShell como Admin) — Python já vem com a JARVIS:
+    winget install Gyan.FFmpeg
+    pip install -U openai-whisper
+
+    # Linux / VPS:
+    sudo apt update && sudo apt install -y ffmpeg
+    pip install -U openai-whisper
+    ```
+    Teste: `whisper --help` deve funcionar. Na 1ª transcrição ele baixa o modelo (~500 MB no `small`).
+  - Dica de velocidade: para CPU, `whisper-ctranslate2` é bem mais rápido. Instale
+    (`pip install whisper-ctranslate2`) e ponha `WHISPER_BIN=whisper-ctranslate2` no `.env`.
+  - Alternativa paga e simples: `STT_ENGINE=openai` (Whisper API, ~centavos/min, precisa da chave).
 - **Falar (secretário narra):** controlada por `VOZ_SAIDA=pc`.
   - **Windows:** usa a voz do sistema (grátis). Para voz em português, instale um pacote de voz
     pt-BR (Configurações › Hora e Idioma › Fala) e opcionalmente informe `VOZ_NOME`.
