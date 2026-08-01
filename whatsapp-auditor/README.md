@@ -71,24 +71,45 @@ verifica disponibilidade e propõe alternativas automaticamente.
    - Na 1ª vez ele cria o `.env` a partir do exemplo (com seu número já preenchido).
    - Rode de novo, **escaneie o QR** (WhatsApp › Aparelhos conectados).
 
-### No VPS Linux (Contabo)
+### No VPS Linux (Contabo) — RECOMENDADO (roda 24/7, PC pode desligar)
+
+**1. Instalar as dependências do sistema (uma vez):**
+```bash
+sudo apt update
+sudo apt install -y chromium-browser ffmpeg espeak-ng python3-pip
+pip install -U openai-whisper          # transcricao local (gratis)
+```
+
+**2. Instalar e logar o Claude CLI no VPS** (a analise usa ele — mesmo plano):
+```bash
+curl -fsSL https://claude.ai/install.sh | bash   # ou: npm i -g @anthropic-ai/claude-code
+claude auth login                                 # abra a URL e faça login no navegador
+claude -p "diga ok"                               # deve responder: ok
+```
+> Sem o Claude logado, o sistema ainda funciona em **modo regras** (classificação por
+> palavras-chave + agenda), só que sem os textos inteligentes. Com ele, fica completo.
+
+**3. Configurar e rodar:**
 ```bash
 cd whatsapp-auditor
 cp .env.example .env
-nano .env                 # confira AUDIT_TARGET e ajuste CHROME_PATH
-sudo apt update && sudo apt install -y chromium-browser
-# aponte CHROME_PATH=/usr/bin/chromium-browser no .env
+nano .env
+#   AUDIT_TARGET=5596984153280
+#   CHROME_PATH=/usr/bin/chromium-browser
+#   VOZ_SAIDA=whatsapp     (manda nota de voz — servidor não tem alto-falante)
 npm install
-node auditor.js           # escaneie o QR na primeira vez
+node auditor.js            # escaneie o QR na primeira vez (aparece no terminal)
 ```
 
-Para rodar 24/7 no VPS, use **pm2**:
+**4. Deixar rodando 24/7 com pm2:**
 ```bash
 npm install -g pm2
 pm2 start auditor.js --name jarvis-whatsapp
 pm2 save
-pm2 startup
+pm2 startup               # siga a instrução que ele imprimir
 ```
+No servidor, o HERUPU **te manda uma nota de voz no WhatsApp** a cada solicitação
+(porque o VPS não tem caixa de som) — você ouve no celular, onde estiver. 🎧
 
 ---
 
@@ -107,8 +128,9 @@ pm2 startup
 | `STT_ENGINE` | Transcrição de áudio: `auto` / `openai` / `local` / `off` |
 | `OPENAI_API_KEY` | Só para transcrição (se `openai`/`auto`) |
 | `WHISPER_BIN` / `WHISPER_MODEL` | Whisper local (se `STT_ENGINE=local`) |
-| `VOZ_SAIDA` | `pc` para falar em voz alta, `off` para só texto |
-| `VOZ_NOME` | (Windows) nome da voz do sistema, ex.: `Microsoft Maria Desktop` |
+| `VOZ_SAIDA` | `whatsapp` (nota de voz — servidor), `pc` (caixa de som), `off` |
+| `TTS_ENGINE` | Gera a nota de voz: `espeak` (leve) ou `piper` (voz melhor) |
+| `VOZ_NOME` | (Windows, modo `pc`) nome da voz do sistema |
 
 ---
 

@@ -14,9 +14,10 @@
 //  Config em .env (veja .env.example).
 // ============================================================
 
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const { spawn } = require('child_process');
+const fs = require('fs');
 const path = require('path');
 const agenda = require('./agenda');
 const voz = require('./voz');
@@ -216,6 +217,26 @@ async function enviarAlerta(texto) {
   if (CFG.destino) await client.sendMessage(CFG.destino + '@c.us', texto);
 }
 
+// Narra a solicitacao: fala no PC OU manda nota de voz no WhatsApp (ideal p/ servidor)
+async function narrar(texto) {
+  if (!texto) return;
+  const saida = voz.vozSaida();
+  if (saida === 'off') return;
+  if (saida === 'pc') { await voz.falar(texto); return; }
+  if (saida === 'whatsapp') {
+    try {
+      const ogg = await voz.sintetizarOgg(texto);
+      if (ogg && CFG.destino) {
+        const media = MessageMedia.fromFilePath(ogg);
+        await client.sendMessage(CFG.destino + '@c.us', media, { sendAudioAsVoice: true });
+        try { fs.unlinkSync(ogg); } catch (_) {}
+      }
+    } catch (e) {
+      console.error('[VOZ] envio de nota de voz falhou:', e.message);
+    }
+  }
+}
+
 // ---------- AUDITORIA COMPLETA (varredura das conversas) ----------
 async function auditoriaCompleta() {
   console.log('[JARVIS] Iniciando auditoria completa das conversas...');
@@ -269,7 +290,7 @@ async function auditoriaCompleta() {
     'Total pendentes: ' + pendentes.length + '\n' +
     '📅 Agendamentos solicitados: ' + agendamentos
   );
-  await voz.falar('Auditoria concluída. Encontrei ' + pendentes.length +
+  await narrar('Auditoria concluída. Encontrei ' + pendentes.length +
     ' conversa' + (pendentes.length === 1 ? '' : 's') + ' com pedido não respondido, sendo ' +
     agendamentos + ' de agendamento.');
   console.log('[JARVIS] Auditoria concluida. Pendentes: ' + pendentes.length + ' | Agendamentos: ' + agendamentos);
@@ -291,7 +312,7 @@ client.on('message', async (msg) => {
     const a = await analisar(texto, nome);
     a.ehAudio = ehAudio;
     await enviarAlerta(montarAlerta(nome, a, ehAudio ? '🎤 ' : '🆕 '));
-    await voz.falar(textoFalado(nome, a)); // secretario avisa em voz alta
+    await narrar(textoFalado(nome, a)); // secretario avisa (voz no PC ou nota de voz no WhatsApp)
     console.log('[TEMPO REAL] ' + nome + (ehAudio ? ' (audio)' : '') + ' | ' + a.tipo + '/' + a.urgencia + (a.agendamento ? ' | AGENDAMENTO' : ''));
 
     if (CFG.modo === 'responder') {

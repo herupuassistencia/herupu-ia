@@ -20,12 +20,19 @@ const { spawn, execFile } = require('child_process');
 
 const CFG = {
   sttEngine: process.env.STT_ENGINE || 'auto',
-  vozSaida: process.env.VOZ_SAIDA || 'pc', // pc | off
+  vozSaida: process.env.VOZ_SAIDA || 'pc', // pc | whatsapp | off
   openaiKey: process.env.OPENAI_API_KEY || '',
   whisperBin: process.env.WHISPER_BIN || 'whisper',
   whisperModel: process.env.WHISPER_MODEL || 'small',
   vozNome: process.env.VOZ_NOME || '', // nome da voz do sistema (opcional)
+  // TTS para gerar audio (modo whatsapp): espeak | piper
+  ttsEngine: process.env.TTS_ENGINE || 'espeak',
+  ttsVoz: process.env.TTS_VOZ || 'pt-br',
+  piperBin: process.env.PIPER_BIN || 'piper',
+  piperVoice: process.env.PIPER_VOICE || '',
 };
+
+function vozSaida() { return CFG.vozSaida; }
 
 function sttAtivo() {
   const eng = CFG.sttEngine === 'auto' ? (CFG.openaiKey ? 'openai' : 'local') : CFG.sttEngine;
@@ -109,4 +116,48 @@ function falar(texto) {
   });
 }
 
-module.exports = { transcrever, falar, sttAtivo };
+// ---------- FALAR via WhatsApp: gera nota de voz (.ogg/opus) ----------
+// Retorna o caminho de um arquivo .ogg pronto para enviar como nota de voz,
+// ou null se o TTS/ffmpeg nao estiver disponivel.
+async function sintetizarOgg(texto) {
+  if (!texto) return null;
+  const base = path.join(os.tmpdir(), 'jarvis-tts-' + Date.now());
+  const wav = base + '.wav';
+  const ogg = base + '.ogg';
+  try {
+    await gerarWav(texto, wav);
+    await paraOgg(wav, ogg);
+    try { fs.unlinkSync(wav); } catch (_) {}
+    return ogg;
+  } catch (e) {
+    console.error('[VOZ] falha ao gerar audio:', e.message);
+    try { fs.unlinkSync(wav); } catch (_) {}
+    return null;
+  }
+}
+
+function gerarWav(texto, wavPath) {
+  return new Promise((resolve, reject) => {
+    let child;
+    if (CFG.ttsEngine === 'piper') {
+      if (!CFG.piperVoice) return reject(new Error('PIPER_VOICE nao definido'));
+      child = spawn(CFG.piperBin, ['-m', CFG.piperVoice, '-f', wavPath]);
+    } else {
+      // espeak-ng: gratis, leve. Instale com: sudo apt install espeak-ng
+      child = spawn('espeak-ng', ['-v', CFG.ttsVoz, '-w', wavPath, '--stdin']);
+    }
+    child.on('error', (e) => reject(e));
+    child.on('close', (code) => (code === 0 ? resolve() : reject(new Error('TTS saiu com codigo ' + code))));
+    child.stdin.write(texto);
+    child.stdin.end();
+  });
+}
+
+function paraOgg(wavPath, oggPath) {
+  return new Promise((resolve, reject) => {
+    execFile('ffmpeg', ['-y', '-i', wavPath, '-c:a', 'libopus', '-b:a', '32k', oggPath],
+      { timeout: 60000 }, (err) => (err ? reject(err) : resolve()));
+  });
+}
+
+module.exports = { transcrever, falar, sintetizarOgg, vozSaida, sttAtivo };
