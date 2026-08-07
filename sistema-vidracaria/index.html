@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema Vidraçaria — HERUPU IA</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">🪟</span>
+      <div>
+        <strong>Sistema Vidraçaria</strong>
+        <small>HERUPU IA</small>
+      </div>
+    </div>
+    <nav class="tabs" id="nav">
+      <button data-view="dashboard" class="active">Painel</button>
+      <button data-view="orcamentos">Orçamentos</button>
+      <button data-view="clientes">Clientes</button>
+      <button data-view="catalogo">Catálogo</button>
+    </nav>
+  </header>
+
+  <main id="app"></main>
+
+  <!-- Modal genérico -->
+  <div class="modal-backdrop" id="modal" hidden>
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="modal-title">Título</h3>
+        <button class="icon-btn" id="modal-close" aria-label="Fechar">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="js/db.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
