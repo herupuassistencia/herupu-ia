@@ -1,9 +1,13 @@
-# 🪟 Orçamentos — Vidraçaria & Esquadrias (HERUPU IA)
+# 🪟 Orçamentos — VIDRAP Vidraçaria (HERUPU IA)
 
-Aplicativo **mobile-first** para o cliente que trabalha com **vidraçaria e esquadrias**
-e usa **somente o celular**. O objetivo principal é **entregar orçamentos de forma
-profissional e com agilidade** — pesquisado e inspirado nos melhores sistemas do
-segmento (EsquadriApp, ECG Glass, WVetro, AlumiCalc, Meu Vidraceiro, Cálculo Certo).
+Aplicativo **mobile-first** para a **VIDRAP Vidraçaria** (Haroldo) — esquadrias em
+alumínio, box, portões búzio, guarda-corpo e motorização — feito para uso **somente
+no celular**. O objetivo principal é **entregar orçamentos de forma profissional e
+com agilidade** — pesquisado e inspirado nos melhores sistemas do segmento
+(EsquadriApp, ECG Glass, WVetro, AlumiCalc, Meu Vidraceiro, Cálculo Certo).
+
+Já vem **pré-configurado com a marca da VIDRAP** (logo, cor dourada, WhatsApp e CNPJ)
+e com o catálogo dos serviços do cartão. Tudo é editável no próprio app.
 
 Funciona 100% no navegador do celular, **sem servidor, sem instalação e offline**.
 Pode ser **instalado na tela inicial** (PWA) e passa a abrir como um app.
@@ -20,8 +24,11 @@ Pode ser **instalado na tela inicial** (PWA) e passa a abrir como um app.
 |--------|-----------|
 | **Orçamento rápido** | Fluxo pensado para o dedo: escolhe cliente → adiciona itens → total sempre à vista → envia. |
 | **Cálculo por m²** | Vidros e espelhos: informa largura × altura (cm) e calcula a área e o valor. |
+| **Variações (tipo e cor)** | Cada produto/esquadria tem várias opções de **tipo/cor** (incolor, fumê, verde, branco, preto, bronze…) com **preço próprio** — escolhidas na hora do orçamento. |
+| **Mão de obra separada** | Além do material (R$/m²), some a **mão de obra** por m² (ou por unidade). Tudo editável por item. |
 | **Esquadrias por vão + folga** | Informa a **medida do vão**; o app calcula o valor e mostra a **medida do vidro já com a folga** (para o corte). Componentes fixos (kit box, roldanas, puxador…) somados automaticamente. |
 | **Cobrança por vão ou por vidro** | Cada tipologia define se cobra pela área do vão ou do vidro cortado. |
+| **Tudo editável** | Preços, tipos/cores, folgas, mão de obra e componentes — todos ajustáveis em **Ajustes**. |
 | **Envio profissional** | 💬 **WhatsApp** com mensagem formatada, 📤 **Compartilhar** (share nativo) e 🖨️ **PDF/impressão**. |
 | **Identidade da empresa** | Nome, slogan, telefone, CNPJ, **logo** (emoji ou imagem) e **cor da marca** — aparecem no orçamento. Ideal para começar a partir do cartão de visita. |
 | **Clientes** | Cadastro rápido com busca; envio já usa o WhatsApp do cliente. |

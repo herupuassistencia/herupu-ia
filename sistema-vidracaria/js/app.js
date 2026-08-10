@@ -58,14 +58,26 @@
     return { l: Math.max(0, num(it.larg) - num(it.folgaL || 0)), a: Math.max(0, num(it.alt) - num(it.folgaA || 0)) };
   }
   function areaVidro(it) { var m = medidaVidro(it); return (m.l / 100) * (m.a / 100); }
-  function subtotalItem(it) {
-    var q = num(it.qtd || 1);
-    if (it.tipo === 'avulso') return (it.modo === 'm2' ? areaVao(it) : 1) * num(it.preco) * q;
-    // esquadria
-    var base = (it.cobrarPor === 'vidro' ? areaVidro(it) : areaVao(it)) * num(it.precoM2);
-    var comp = (it.componentes || []).reduce(function (s, c) { return s + num(c.preco) * num(c.qtd || 1); }, 0);
-    return (base + comp) * q;
+  // Lista de variações (tipo/cor) de um item do catálogo, com fallback p/ dados antigos.
+  function variacoesDe(ref) {
+    if (ref && Array.isArray(ref.variacoes) && ref.variacoes.length) return ref.variacoes;
+    var p = ref ? (ref.precoM2 != null ? ref.precoM2 : ref.preco) : 0;
+    return [{ nome: 'Padrão', preco: num(p) }];
   }
+  // Detalhamento do preço de um item: material (m²) + mão de obra + componentes.
+  function detalheItem(it) {
+    var q = num(it.qtd || 1);
+    if (it.tipo === 'avulso' && it.modo === 'un') {
+      var mat = num(it.preco), moU = num(it.maoObra || 0);
+      return { area: 0, material: mat, mao: moU, comp: 0, unit: mat + moU, total: (mat + moU) * q };
+    }
+    var area = (it.tipo === 'esquadria' && it.cobrarPor === 'vidro') ? areaVidro(it) : areaVao(it);
+    var material = area * num(it.preco != null ? it.preco : it.precoM2);
+    var mao = area * num(it.maoObraM2 || 0);
+    var comp = (it.componentes || []).reduce(function (s, c) { return s + num(c.preco) * num(c.qtd || 1); }, 0);
+    return { area: area, material: material, mao: mao, comp: comp, unit: material + mao + comp, total: (material + mao + comp) * q };
+  }
+  function subtotalItem(it) { return detalheItem(it).total; }
   function totais(orc) {
     var bruto = (orc.itens || []).reduce(function (s, it) { return s + subtotalItem(it); }, 0);
     var d = num(orc.desconto);
@@ -231,12 +243,14 @@
     node.appendChild(el('<div class="section-label" style="margin-top:0">Esquadrias (medida do vão)</div>'));
     var l1 = el('<div class="list"></div>');
     esqs.forEach(function (e) {
-      var c = el('<div class="card row-item"><div class="grow"><strong>' + esc(e.nome) + '</strong><small>' + esc(e.categoria) + ' · ' + brl(e.precoM2) + '/m² (' + (e.cobrarPor === 'vidro' ? 'vidro' : 'vão') + ')</small></div><span>›</span></div>');
+      var v0 = variacoesDe(e)[0];
+      var c = el('<div class="card row-item"><div class="grow"><strong>' + esc(e.nome) + '</strong><small>' + esc(e.categoria) + ' · a partir de ' + brl(v0.preco) + '/m² (' + (e.cobrarPor === 'vidro' ? 'vidro' : 'vão') + ')</small></div><span>›</span></div>');
       c.onclick = function () {
         closeModal();
         itemEditor(orc, redraw, {
-          tipo: 'esquadria', refId: e.id, nome: e.nome, precoM2: e.precoM2, cobrarPor: e.cobrarPor,
-          folgaL: e.folgaL, folgaA: e.folgaA, larg: '', alt: '', qtd: 1,
+          tipo: 'esquadria', refId: e.id, baseNome: e.nome, nome: e.nome, cobrarPor: e.cobrarPor,
+          folgaL: e.folgaL, folgaA: e.folgaA, variacao: v0.nome, preco: v0.preco,
+          maoObraM2: e.maoObraM2 || 0, larg: '', alt: '', qtd: 1,
           componentes: JSON.parse(JSON.stringify(e.componentes || []))
         });
       };
@@ -247,10 +261,15 @@
     node.appendChild(el('<div class="section-label">Produtos avulsos</div>'));
     var l2 = el('<div class="list"></div>');
     prods.forEach(function (p) {
-      var c = el('<div class="card row-item"><div class="grow"><strong>' + esc(p.nome) + '</strong><small>' + esc(p.categoria) + ' · ' + brl(p.preco) + (p.modo === 'm2' ? '/m²' : '/un') + '</small></div><span>›</span></div>');
+      var v0 = variacoesDe(p)[0];
+      var c = el('<div class="card row-item"><div class="grow"><strong>' + esc(p.nome) + '</strong><small>' + esc(p.categoria) + ' · a partir de ' + brl(v0.preco) + (p.modo === 'm2' ? '/m²' : '/un') + '</small></div><span>›</span></div>');
       c.onclick = function () {
         closeModal();
-        itemEditor(orc, redraw, { tipo: 'avulso', refId: p.id, nome: p.nome, modo: p.modo, preco: p.preco, larg: '', alt: '', qtd: 1 });
+        itemEditor(orc, redraw, {
+          tipo: 'avulso', refId: p.id, baseNome: p.nome, nome: p.nome, modo: p.modo,
+          variacao: v0.nome, preco: v0.preco, maoObraM2: p.maoObraM2 || 0, maoObra: p.maoObraUn || 0,
+          larg: '', alt: '', qtd: 1
+        });
       };
       l2.appendChild(c);
     });
@@ -259,27 +278,31 @@
   }
 
   function itemEditor(orc, redraw, it, editIdx) {
-    var node = el('<div></div>');
-    var precoM2 = it.tipo === 'esquadria' ? it.precoM2 : it.preco;
+    var ref = it.tipo === 'esquadria' ? DB.esquadrias.get(it.refId) : DB.produtos.get(it.refId);
+    var vars = variacoesDe(ref);
     var isMedida = it.tipo === 'esquadria' || (it.tipo === 'avulso' && it.modo === 'm2');
+    var node = el('<div></div>');
 
-    var html = '<div class="field"><strong>' + esc(it.nome) + '</strong>';
-    if (it.tipo === 'esquadria') html += '<div class="hint">' + brl(it.precoM2) + '/m² pelo ' + (it.cobrarPor === 'vidro' ? 'vidro cortado' : 'vão') + (num(it.folgaL) || num(it.folgaA) ? ' · folga ' + num(it.folgaL) + '×' + num(it.folgaA) + 'cm' : '') + '</div>';
+    var html = '<div class="field"><strong>' + esc(it.baseNome || it.nome) + '</strong>';
+    if (it.tipo === 'esquadria') html += '<div class="hint">cobrança pelo ' + (it.cobrarPor === 'vidro' ? 'vidro cortado' : 'vão') + (num(it.folgaL) || num(it.folgaA) ? ' · folga ' + num(it.folgaL) + '×' + num(it.folgaA) + 'cm' : '') + '</div>';
     html += '</div>';
+    // Variações (tipo / cor)
+    if (vars.length > 1) {
+      html += '<div class="field"><label>Tipo / cor</label><div class="chips" id="it-vars">' +
+        vars.map(function (v) { return '<button type="button" class="chip' + (v.nome === it.variacao ? ' on' : '') + '" data-preco="' + v.preco + '">' + esc(v.nome) + '</button>'; }).join('') +
+        '</div></div>';
+    }
     if (isMedida) {
       html += '<div class="grid-2">' +
         '<div class="field"><label>Largura (cm)</label><input id="it-l" inputmode="decimal" value="' + (it.larg || '') + '" placeholder="ex: 120"></div>' +
-        '<div class="field"><label>Altura (cm)</label><input id="it-a" inputmode="decimal" value="' + (it.alt || '') + '" placeholder="ex: 90"></div>' +
-        '</div>';
+        '<div class="field"><label>Altura (cm)</label><input id="it-a" inputmode="decimal" value="' + (it.alt || '') + '" placeholder="ex: 90"></div></div>';
     }
-    html += '<div class="field"><label>Quantidade</label><input id="it-q" inputmode="numeric" value="' + (it.qtd || 1) + '"></div>';
-    if (it.tipo === 'esquadria') {
-      html += '<div class="field"><label>Preço do m² (R$)</label><input id="it-p" inputmode="decimal" value="' + precoM2 + '"></div>';
-    } else if (it.modo === 'm2') {
-      html += '<div class="field"><label>Preço do m² (R$)</label><input id="it-p" inputmode="decimal" value="' + precoM2 + '"></div>';
-    } else {
-      html += '<div class="field"><label>Preço unitário (R$)</label><input id="it-p" inputmode="decimal" value="' + precoM2 + '"></div>';
-    }
+    html += '<div class="grid-2">' +
+      '<div class="field"><label>Quantidade</label><input id="it-q" inputmode="numeric" value="' + (it.qtd || 1) + '"></div>' +
+      '<div class="field"><label>Preço (R$' + (isMedida ? '/m²' : '/un') + ')</label><input id="it-p" inputmode="decimal" value="' + num(it.preco) + '"></div></div>';
+    // Mão de obra
+    if (isMedida) html += '<div class="field"><label>Mão de obra (R$/m²)</label><input id="it-mo" inputmode="decimal" value="' + num(it.maoObraM2 || 0) + '"><div class="hint">Deixe 0 se já estiver no preço do m².</div></div>';
+    else html += '<div class="field"><label>Mão de obra (R$)</label><input id="it-mo" inputmode="decimal" value="' + num(it.maoObra || 0) + '"></div>';
     html += '<div class="card mt" id="it-calc" style="background:var(--bg)"></div>';
     node.innerHTML = html;
 
@@ -287,28 +310,40 @@
     function sync() {
       if (isMedida) { it.larg = num(node.querySelector('#it-l').value); it.alt = num(node.querySelector('#it-a').value); }
       it.qtd = num(node.querySelector('#it-q').value) || 1;
-      var p = num(node.querySelector('#it-p').value);
-      if (it.tipo === 'esquadria') it.precoM2 = p; else it.preco = p;
-      var lines = '';
-      if (it.tipo === 'esquadria') {
-        var m = medidaVidro(it);
-        lines += '<div class="totais"><div class="line"><span>Vão</span><span>' + areaVao(it).toFixed(2) + ' m²</span></div>';
-        lines += '<div class="line"><span>Vidro (corte)</span><span>' + m.l.toFixed(1) + '×' + m.a.toFixed(1) + 'cm · ' + areaVidro(it).toFixed(2) + 'm²</span></div>';
-        if ((it.componentes || []).length) lines += '<div class="line"><span>Componentes</span><span>' + brl((it.componentes).reduce(function (s, c) { return s + num(c.preco) * num(c.qtd || 1); }, 0)) + '</span></div>';
-        lines += '<div class="line big"><span>Subtotal</span><span>' + brl(subtotalItem(it)) + '</span></div></div>';
-      } else if (it.modo === 'm2') {
-        lines = '<div class="totais"><div class="line"><span>Área</span><span>' + areaVao(it).toFixed(2) + ' m²</span></div><div class="line big"><span>Subtotal</span><span>' + brl(subtotalItem(it)) + '</span></div></div>';
-      } else {
-        lines = '<div class="totais"><div class="line big"><span>Subtotal</span><span>' + brl(subtotalItem(it)) + '</span></div></div>';
+      it.preco = num(node.querySelector('#it-p').value);
+      if (isMedida) it.maoObraM2 = num(node.querySelector('#it-mo').value); else it.maoObra = num(node.querySelector('#it-mo').value);
+      var d = detalheItem(it), lines = '<div class="totais">';
+      if (isMedida) {
+        if (it.tipo === 'esquadria' && it.cobrarPor === 'vidro') {
+          var m = medidaVidro(it);
+          lines += '<div class="line"><span>Vidro (corte c/ folga)</span><span>' + m.l.toFixed(1) + '×' + m.a.toFixed(1) + 'cm · ' + d.area.toFixed(2) + 'm²</span></div>';
+        } else {
+          lines += '<div class="line"><span>Área</span><span>' + d.area.toFixed(2) + ' m²</span></div>';
+          if (it.tipo === 'esquadria') { var mm = medidaVidro(it); lines += '<div class="line muted"><span>Vidro p/ corte</span><span>' + mm.l.toFixed(1) + '×' + mm.a.toFixed(1) + 'cm</span></div>'; }
+        }
       }
+      lines += '<div class="line"><span>Material</span><span>' + brl(d.material) + '</span></div>';
+      if (d.mao) lines += '<div class="line"><span>Mão de obra</span><span>' + brl(d.mao) + '</span></div>';
+      if (d.comp) lines += '<div class="line"><span>Componentes</span><span>' + brl(d.comp) + '</span></div>';
+      if (num(it.qtd) > 1) lines += '<div class="line"><span>Unitário × ' + num(it.qtd) + '</span><span>' + brl(d.unit) + '</span></div>';
+      lines += '<div class="line big"><span>Subtotal</span><span>' + brl(d.total) + '</span></div></div>';
       calc.innerHTML = lines;
     }
+
+    var varsBox = node.querySelector('#it-vars');
+    if (varsBox) varsBox.addEventListener('click', function (e) {
+      var b = e.target.closest('.chip'); if (!b) return;
+      Array.prototype.forEach.call(varsBox.children, function (c) { c.classList.remove('on'); });
+      b.classList.add('on'); it.variacao = b.textContent;
+      node.querySelector('#it-p').value = num(b.dataset.preco); sync();
+    });
     Array.prototype.forEach.call(node.querySelectorAll('input'), function (i) { i.addEventListener('input', sync); });
     sync();
 
     var ok = el('<button class="btn success mt">' + (editIdx != null ? 'Salvar item' : 'Adicionar ao orçamento') + '</button>');
     ok.onclick = function () {
       if (isMedida && (!it.larg || !it.alt)) { toast('Informe largura e altura'); return; }
+      it.nome = (it.baseNome || it.nome) + (it.variacao && it.variacao !== 'Padrão' ? ' — ' + it.variacao : '');
       if (editIdx != null) orc.itens[editIdx] = it; else orc.itens.push(it);
       closeModal(); redraw();
     };
@@ -509,27 +544,54 @@
     add.onclick = function () { formEsquadria(null); }; app.appendChild(add);
     var box = el('<div class="list mt"></div>'); app.appendChild(box);
     DB.esquadrias.all().forEach(function (e) {
-      var c = el('<div class="card row-item"><div class="grow"><strong>' + esc(e.nome) + '</strong><small>' + esc(e.categoria) + ' · ' + brl(e.precoM2) + '/m² (' + (e.cobrarPor === 'vidro' ? 'vidro' : 'vão') + ') · folga ' + num(e.folgaL) + '×' + num(e.folgaA) + 'cm</small></div><button class="icon-btn">✏️</button></div>');
+      var vs = variacoesDe(e), faixa = vs.length > 1 ? (brl(Math.min.apply(null, vs.map(function (v) { return v.preco; }))) + '–' + brl(Math.max.apply(null, vs.map(function (v) { return v.preco; })))) : brl(vs[0].preco);
+      var c = el('<div class="card row-item"><div class="grow"><strong>' + esc(e.nome) + '</strong><small>' + esc(e.categoria) + ' · ' + faixa + '/m² · ' + vs.length + ' cor(es) · MO ' + brl(e.maoObraM2 || 0) + '/m²</small></div><button class="icon-btn">✏️</button></div>');
       c.querySelector('.icon-btn').onclick = function () { formEsquadria(e); };
       box.appendChild(c);
     });
   }
+  // Editor de lista de variações (tipo/cor + preço) reutilizável.
+  function variacoesEditor(vars) {
+    var wrap = el('<div></div>');
+    function draw() {
+      wrap.innerHTML = vars.map(function (v, i) {
+        return '<div class="grid-2" style="grid-template-columns:1.4fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px">' +
+          '<input data-v-nome="' + i + '" value="' + esc(v.nome) + '" placeholder="tipo/cor">' +
+          '<input data-v-preco="' + i + '" inputmode="decimal" value="' + num(v.preco) + '" placeholder="R$/m²">' +
+          '<button type="button" class="icon-btn" data-v-rm="' + i + '">✕</button></div>';
+      }).join('') + '<button type="button" class="btn ghost sm" data-v-add>＋ Tipo / cor</button>';
+    }
+    wrap.addEventListener('click', function (e) {
+      if (e.target.hasAttribute('data-v-add')) { vars.push({ nome: '', preco: 0 }); draw(); }
+      var rm = e.target.closest('[data-v-rm]'); if (rm) { vars.splice(+rm.getAttribute('data-v-rm'), 1); if (!vars.length) vars.push({ nome: 'Padrão', preco: 0 }); draw(); }
+    });
+    wrap.addEventListener('input', function (e) {
+      var n = e.target.getAttribute('data-v-nome'), p = e.target.getAttribute('data-v-preco');
+      if (n != null) vars[+n].nome = e.target.value;
+      if (p != null) vars[+p].preco = num(e.target.value);
+    });
+    draw();
+    return wrap;
+  }
   function formEsquadria(e) {
-    var editing = !!e; e = e || { nome: '', categoria: 'Janela', precoM2: 0, cobrarPor: 'vao', folgaL: 1, folgaA: 1, componentes: [] };
+    var editing = !!e; e = e || { nome: '', categoria: 'Esquadria', cobrarPor: 'vao', folgaL: 1, folgaA: 1, maoObraM2: 0, variacoes: [], componentes: [] };
     var comps = JSON.parse(JSON.stringify(e.componentes || []));
+    var vars = JSON.parse(JSON.stringify(variacoesDe(e)));
     var node = el('<div></div>');
     function compHtml() {
       return comps.map(function (c, i) { return '<div class="builder-item"><div class="grow"><strong>' + esc(c.nome) + '</strong><small>' + brl(c.preco) + ' · x' + num(c.qtd || 1) + '</small></div><button class="icon-btn" data-rm="' + i + '">✕</button></div>'; }).join('') || '<div class="muted" style="padding:4px">Sem componentes.</div>';
     }
     node.innerHTML =
       '<div class="field"><label>Nome *</label><input id="s-nome" value="' + esc(e.nome) + '"></div>' +
-      '<div class="grid-2"><div class="field"><label>Categoria</label><input id="s-cat" value="' + esc(e.categoria) + '"></div>' +
-      '<div class="field"><label>Preço m² (R$)</label><input id="s-preco" inputmode="decimal" value="' + e.precoM2 + '"></div></div>' +
-      '<div class="field"><label>Cobrar pela área do</label><select id="s-cobrar"><option value="vao"' + (e.cobrarPor === 'vao' ? ' selected' : '') + '>Vão (medida do buraco)</option><option value="vidro"' + (e.cobrarPor === 'vidro' ? ' selected' : '') + '>Vidro cortado (com folga)</option></select></div>' +
+      '<div class="field"><label>Categoria</label><input id="s-cat" value="' + esc(e.categoria) + '"></div>' +
+      '<div class="section-label">Tipos / cores e preço do m²</div><div id="s-vars"></div>' +
+      '<div class="grid-2 mt"><div class="field"><label>Mão de obra (R$/m²)</label><input id="s-mo" inputmode="decimal" value="' + num(e.maoObraM2 || 0) + '"></div>' +
+      '<div class="field"><label>Cobrar área do</label><select id="s-cobrar"><option value="vao"' + (e.cobrarPor === 'vao' ? ' selected' : '') + '>Vão</option><option value="vidro"' + (e.cobrarPor === 'vidro' ? ' selected' : '') + '>Vidro cortado</option></select></div></div>' +
       '<div class="grid-2"><div class="field"><label>Folga largura (cm)</label><input id="s-fl" inputmode="decimal" value="' + num(e.folgaL) + '"></div>' +
       '<div class="field"><label>Folga altura (cm)</label><input id="s-fa" inputmode="decimal" value="' + num(e.folgaA) + '"></div></div>' +
       '<div class="section-label">Componentes fixos</div><div class="list" id="s-comps">' + compHtml() + '</div>' +
       '<button class="btn ghost sm mt" id="s-addcomp">＋ Componente</button>';
+    node.querySelector('#s-vars').appendChild(variacoesEditor(vars));
     node.querySelector('#s-comps').addEventListener('click', function (ev) {
       var b = ev.target.closest('[data-rm]'); if (b) { comps.splice(+b.dataset.rm, 1); node.querySelector('#s-comps').innerHTML = compHtml(); }
     });
@@ -540,10 +602,13 @@
     };
     var save = el('<button class="btn success mt">Salvar</button>');
     save.onclick = function () {
+      var clean = vars.filter(function (v) { return (v.nome || '').trim() || num(v.preco); }).map(function (v) { return { nome: (v.nome || 'Padrão').trim(), preco: num(v.preco) }; });
+      if (!clean.length) clean = [{ nome: 'Padrão', preco: 0 }];
       var obj = {
         nome: node.querySelector('#s-nome').value.trim(), categoria: node.querySelector('#s-cat').value.trim() || 'Esquadria',
-        precoM2: num(node.querySelector('#s-preco').value), cobrarPor: node.querySelector('#s-cobrar').value,
-        folgaL: num(node.querySelector('#s-fl').value), folgaA: num(node.querySelector('#s-fa').value), componentes: comps
+        cobrarPor: node.querySelector('#s-cobrar').value, maoObraM2: num(node.querySelector('#s-mo').value),
+        folgaL: num(node.querySelector('#s-fl').value), folgaA: num(node.querySelector('#s-fa').value),
+        variacoes: clean, componentes: comps
       };
       if (!obj.nome) { toast('Informe o nome'); return; }
       if (editing) DB.esquadrias.update(e.id, obj); else DB.esquadrias.add(obj);
@@ -567,22 +632,41 @@
     add.onclick = function () { formProduto(null); }; app.appendChild(add);
     var box = el('<div class="list mt"></div>'); app.appendChild(box);
     DB.produtos.all().forEach(function (p) {
-      var c = el('<div class="card row-item"><div class="grow"><strong>' + esc(p.nome) + '</strong><small>' + esc(p.categoria) + ' · ' + brl(p.preco) + (p.modo === 'm2' ? '/m²' : '/un') + '</small></div><button class="icon-btn">✏️</button></div>');
+      var vs = variacoesDe(p), faixa = vs.length > 1 ? (brl(Math.min.apply(null, vs.map(function (v) { return v.preco; }))) + '–' + brl(Math.max.apply(null, vs.map(function (v) { return v.preco; })))) : brl(vs[0].preco);
+      var mo = p.modo === 'm2' ? (p.maoObraM2 ? ' · MO ' + brl(p.maoObraM2) + '/m²' : '') : (p.maoObraUn ? ' · MO ' + brl(p.maoObraUn) : '');
+      var c = el('<div class="card row-item"><div class="grow"><strong>' + esc(p.nome) + '</strong><small>' + esc(p.categoria) + ' · ' + faixa + (p.modo === 'm2' ? '/m²' : '/un') + mo + '</small></div><button class="icon-btn">✏️</button></div>');
       c.querySelector('.icon-btn').onclick = function () { formProduto(p); };
       box.appendChild(c);
     });
   }
   function formProduto(p) {
-    var editing = !!p; p = p || { nome: '', categoria: 'Vidro', modo: 'm2', preco: 0 };
+    var editing = !!p; p = p || { nome: '', categoria: 'Vidro', modo: 'm2', maoObraM2: 0, maoObraUn: 0, variacoes: [] };
+    var vars = JSON.parse(JSON.stringify(variacoesDe(p)));
     var node = el('<div></div>');
+    function moField(modo) {
+      return modo === 'm2'
+        ? '<div class="field"><label>Mão de obra (R$/m²)</label><input id="p-mo" inputmode="decimal" value="' + num(p.maoObraM2 || 0) + '"></div>'
+        : '<div class="field"><label>Mão de obra (R$/un)</label><input id="p-mo" inputmode="decimal" value="' + num(p.maoObraUn || 0) + '"></div>';
+    }
     node.innerHTML =
       '<div class="field"><label>Nome *</label><input id="p-nome" value="' + esc(p.nome) + '"></div>' +
       '<div class="grid-2"><div class="field"><label>Categoria</label><input id="p-cat" value="' + esc(p.categoria) + '"></div>' +
       '<div class="field"><label>Cobrança</label><select id="p-modo"><option value="m2"' + (p.modo === 'm2' ? ' selected' : '') + '>por m²</option><option value="un"' + (p.modo === 'un' ? ' selected' : '') + '>por unidade</option></select></div></div>' +
-      '<div class="field"><label>Preço (R$)</label><input id="p-preco" inputmode="decimal" value="' + p.preco + '"></div>';
-    var save = el('<button class="btn success">Salvar</button>');
+      '<div class="section-label">Tipos / cores e preço</div><div id="p-vars"></div>' +
+      '<div id="p-mo-wrap" class="mt">' + moField(p.modo) + '</div>';
+    node.querySelector('#p-vars').appendChild(variacoesEditor(vars));
+    node.querySelector('#p-modo').addEventListener('change', function (e) { node.querySelector('#p-mo-wrap').innerHTML = moField(e.target.value); });
+    var save = el('<button class="btn success mt">Salvar</button>');
     save.onclick = function () {
-      var obj = { nome: node.querySelector('#p-nome').value.trim(), categoria: node.querySelector('#p-cat').value.trim() || 'Produto', modo: node.querySelector('#p-modo').value, preco: num(node.querySelector('#p-preco').value) };
+      var modo = node.querySelector('#p-modo').value;
+      var clean = vars.filter(function (v) { return (v.nome || '').trim() || num(v.preco); }).map(function (v) { return { nome: (v.nome || 'Padrão').trim(), preco: num(v.preco) }; });
+      if (!clean.length) clean = [{ nome: 'Padrão', preco: 0 }];
+      var obj = {
+        nome: node.querySelector('#p-nome').value.trim(), categoria: node.querySelector('#p-cat').value.trim() || 'Produto',
+        modo: modo, variacoes: clean
+      };
+      var mo = num(node.querySelector('#p-mo').value);
+      if (modo === 'm2') obj.maoObraM2 = mo; else obj.maoObraUn = mo;
       if (!obj.nome) { toast('Informe o nome'); return; }
       if (editing) DB.produtos.update(p.id, obj); else DB.produtos.add(obj);
       closeModal(); toast('Salvo ✔'); renderProdutos();
