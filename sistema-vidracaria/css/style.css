@@ -157,6 +157,7 @@ main { max-width: 640px; margin: 0 auto; padding: 16px; }
   position: fixed; inset: 0; z-index: 40; background: rgba(15,23,42,.5);
   display: flex; align-items: flex-end; justify-content: center;
 }
+.sheet-backdrop[hidden] { display: none; }  /* respeita o atributo hidden (não abrir vazio) */
 .sheet {
   background: #fff; width: 100%; max-width: 640px;
   border-radius: 20px 20px 0 0; max-height: 92vh; display: flex; flex-direction: column;
