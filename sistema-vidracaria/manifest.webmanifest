@@ -1,0 +1,20 @@
+{
+  "name": "Orçamentos — Vidraçaria & Esquadrias",
+  "short_name": "Orçamentos",
+  "description": "Orçamentos profissionais de vidraçaria e esquadrias na palma da mão.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f1f5f9",
+  "theme_color": "#0ea5e9",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='512' height='512'%3E%3Crect width='512' height='512' rx='96' fill='%230ea5e9'/%3E%3Ctext x='50%25' y='52%25' font-size='300' text-anchor='middle' dominant-baseline='central'%3E%F0%9F%AA%9F%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

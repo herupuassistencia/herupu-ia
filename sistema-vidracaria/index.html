@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1" />
+  <meta name="theme-color" content="#0ea5e9" id="theme-color-meta" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Orçamentos — Vidraçaria & Esquadrias</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- Cabeçalho compacto -->
+  <header class="appbar">
+    <span class="appbar-logo" id="appbar-logo">🪟</span>
+    <div class="appbar-titles">
+      <strong id="appbar-nome">Sua Vidraçaria</strong>
+      <small id="appbar-slogan">Vidros e Esquadrias</small>
+    </div>
+  </header>
+
+  <!-- Conteúdo -->
+  <main id="app"></main>
+
+  <!-- Navegação inferior (mobile-first) -->
+  <nav class="bottomnav" id="nav">
+    <button data-view="inicio" class="active"><span>🏠</span>Início</button>
+    <button data-view="orcar" class="cta"><span>➕</span>Orçar</button>
+    <button data-view="clientes"><span>👥</span>Clientes</button>
+    <button data-view="config"><span>⚙️</span>Ajustes</button>
+  </nav>
+
+  <!-- Modal / folha inferior -->
+  <div class="sheet-backdrop" id="modal" hidden>
+    <div class="sheet">
+      <div class="sheet-head">
+        <h3 id="modal-title">Título</h3>
+        <button class="icon-btn" id="modal-close" aria-label="Fechar">✕</button>
+      </div>
+      <div class="sheet-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="js/db.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    // PWA: registra service worker quando servido via http/https (ex.: GitHub Pages).
+    if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js').catch(function () {});
+      });
+    }
+  </script>
+</body>
+</html>
