@@ -1,65 +1,61 @@
-# 🪟 Sistema Vidraçaria — HERUPU IA
+# 🪟 Orçamentos — Vidraçaria & Esquadrias (HERUPU IA)
 
-Sistema web simples e completo para gestão de uma **vidraçaria**: cadastro de
-clientes, catálogo de vidros/acessórios com preço por m² ou por unidade,
-criação de orçamentos com **cálculo automático de área** (largura × altura) e
-envio do orçamento por **WhatsApp** ou impressão em PDF.
+Aplicativo **mobile-first** para o cliente que trabalha com **vidraçaria e esquadrias**
+e usa **somente o celular**. O objetivo principal é **entregar orçamentos de forma
+profissional e com agilidade** — pesquisado e inspirado nos melhores sistemas do
+segmento (EsquadriApp, ECG Glass, WVetro, AlumiCalc, Meu Vidraceiro, Cálculo Certo).
 
-Funciona 100% no navegador — **não precisa de servidor, banco de dados nem
-instalação**. Os dados ficam salvos localmente no próprio navegador
-(`localStorage`).
+Funciona 100% no navegador do celular, **sem servidor, sem instalação e offline**.
+Pode ser **instalado na tela inicial** (PWA) e passa a abrir como um app.
 
 ## ▶️ Como usar
+- **Testar agora:** abra `index.html` no navegador.
+- **No celular do cliente (recomendado):** hospede a pasta (ex.: GitHub Pages) e, no
+  celular, use *"Adicionar à tela de início"*. O app passa a funcionar como aplicativo,
+  inclusive **offline**.
 
-1. Abra o arquivo `index.html` no navegador (duplo clique já funciona).
-2. Já vem com dados de demonstração (clientes e catálogo) para você testar.
+## ⭐ O que ele faz (recursos priorizados na pesquisa do segmento)
 
-## ✨ Funcionalidades
-
-| Módulo | O que faz |
+| Recurso | Descrição |
 |--------|-----------|
-| **Painel** | Resumo: nº de clientes, orçamentos, valor aprovado e em aberto |
-| **Orçamentos** | Cria/edita orçamentos, adiciona itens, aplica desconto (R$ ou %), define status |
-| **Clientes** | Cadastro com nome, telefone, e-mail e endereço + busca |
-| **Catálogo** | Produtos de vidraçaria com preço por m² ou por unidade |
+| **Orçamento rápido** | Fluxo pensado para o dedo: escolhe cliente → adiciona itens → total sempre à vista → envia. |
+| **Cálculo por m²** | Vidros e espelhos: informa largura × altura (cm) e calcula a área e o valor. |
+| **Esquadrias por vão + folga** | Informa a **medida do vão**; o app calcula o valor e mostra a **medida do vidro já com a folga** (para o corte). Componentes fixos (kit box, roldanas, puxador…) somados automaticamente. |
+| **Cobrança por vão ou por vidro** | Cada tipologia define se cobra pela área do vão ou do vidro cortado. |
+| **Envio profissional** | 💬 **WhatsApp** com mensagem formatada, 📤 **Compartilhar** (share nativo) e 🖨️ **PDF/impressão**. |
+| **Identidade da empresa** | Nome, slogan, telefone, CNPJ, **logo** (emoji ou imagem) e **cor da marca** — aparecem no orçamento. Ideal para começar a partir do cartão de visita. |
+| **Clientes** | Cadastro rápido com busca; envio já usa o WhatsApp do cliente. |
+| **Preços editáveis** | Tabela de esquadrias (tipologias, folgas, componentes) e produtos avulsos. |
+| **Backup** | Exporta tudo em JSON (os dados ficam no aparelho). |
 
-### Cálculo automático de vidro
-Ao adicionar um item cobrado **por m²**, basta informar **largura** e **altura**
-em centímetros e a quantidade. O sistema calcula a área
-(`largura/100 × altura/100`) e multiplica pelo preço do m².
-
-Itens cobrados **por unidade** (kits, puxadores, mão de obra) são somados
-diretamente pela quantidade.
-
-### Orçamento pronto para o cliente
-Cada orçamento pode ser:
-- 🖨️ **Impresso / salvo em PDF** (layout limpo para impressão);
-- 💬 **Enviado por WhatsApp** — abre o WhatsApp já com a mensagem formatada
-  (usa o telefone cadastrado do cliente).
+## 🧮 Como funciona o cálculo de esquadria
+1. Escolhe a tipologia (ex.: *Box de Correr 8mm*, *Janela de Correr 2 folhas*).
+2. Informa **largura × altura do vão** (cm) e a quantidade.
+3. O app calcula:
+   - **Área do vão** = L × A;
+   - **Medida do vidro** = (L − folga) × (A − folga) — mostrada para o corte;
+   - **Valor** = área (do vão *ou* do vidro, conforme configurado) × preço do m² **+ componentes**.
 
 ## 🗂️ Estrutura
-
 ```
 sistema-vidracaria/
-├── index.html        # página única (SPA)
-├── css/style.css     # estilos
+├── index.html            # shell mobile-first (app bar + navegação inferior)
+├── manifest.webmanifest  # PWA (instalar na tela inicial)
+├── sw.js                 # service worker (uso offline quando hospedado)
+├── css/style.css         # estilos mobile-first
 └── js/
-    ├── db.js         # persistência em localStorage + dados de exemplo
-    └── app.js        # telas, orçamentos, cálculos, WhatsApp/impressão
+    ├── db.js             # dados no localStorage (empresa, clientes, produtos, esquadrias, orçamentos)
+    └── app.js            # telas, cálculo de orçamento, WhatsApp/compartilhar/PDF
 ```
 
-## 🔧 Personalização rápida
+## 🔧 Personalização
+- **Empresa/marca:** em **Ajustes → Dados da empresa** (edite direto no app).
+- **Preços/esquadrias:** em **Ajustes → Esquadrias** e **Produtos avulsos**.
 
-- **Preços / produtos:** edite pelo módulo **Catálogo** ou ajuste a lista
-  `SEED.catalogo` em `js/db.js`.
-- **Nome da empresa:** troque "Vidraçaria HERUPU" em `js/app.js`
-  (funções `verOrcamento` e `enviarWhats`).
-
-## 🚀 Integração com automação (HERUPU IA / n8n)
-O texto gerado no botão de WhatsApp segue um formato padrão que pode ser
-consumido por fluxos do n8n para envio automático via API do WhatsApp.
-Como os dados ficam em `localStorage`, use `DB.exportJSON()` no console do
-navegador para exportar tudo em JSON quando quiser integrar com outros sistemas.
+## 🚀 Próximos passos possíveis
+Integração com **n8n + API de WhatsApp** (Evolution/Z-API/oficial) para envio
+automático, e sincronização em nuvem. O código já gera a mensagem em formato
+padrão pronta para esses fluxos.
 
 ---
-Feito para o ecossistema **HERUPU IA** — automação inteligente com WhatsApp + n8n + IA.
+Parte do ecossistema **HERUPU IA** — automação inteligente com WhatsApp + n8n + IA.
