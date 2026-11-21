@@ -49,6 +49,8 @@ server {
   }
   # o service worker e o index nunca ficam em cache (senão o app não atualiza)
   location = /sw.js { add_header Cache-Control "no-cache"; try_files \$uri =404; }
+  location = /firebase-messaging-sw.js { add_header Cache-Control "no-cache"; try_files \$uri =404; }
+  location = /firebase-config.js { add_header Cache-Control "no-cache"; try_files \$uri =404; }
   location = /index.html { add_header Cache-Control "no-cache"; }
   location /assets/ { expires 1y; add_header Cache-Control "public, immutable"; }
   location / { try_files \$uri \$uri/ /index.html; }
