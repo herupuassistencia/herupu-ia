@@ -1,0 +1,867 @@
+diff --git a/src/components/Ordens/KanbanOrdens.jsx b/src/components/Ordens/KanbanOrdens.jsx
+index 2be6783..78c9b25 100644
+--- a/src/components/Ordens/KanbanOrdens.jsx
++++ b/src/components/Ordens/KanbanOrdens.jsx
+@@ -138,7 +138,7 @@ export default function KanbanOrdens({
+     <div className="w-full space-y-3">
+       {/* LINHA 1 — NOVAS */}
+       <LinhaHeader label="▸ NOVAS SOLICITAÇÕES" sub="entrando" />
+-      <div className="grid grid-cols-2 gap-3">
++      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+         {LINHA_NOVAS.map((c) => (
+           <Coluna key={c.titulo} coluna={c} />
+         ))}
+@@ -146,7 +146,7 @@ export default function KanbanOrdens({
+ 
+       {/* LINHA 2 — EM ANDAMENTO */}
+       <LinhaHeader label="▸ EM ANDAMENTO" sub="fluxo operacional" />
+-      <div className="grid grid-cols-4 gap-3">
++      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+         {LINHA_ANDAMENTO.map((c) => (
+           <Coluna key={c.titulo} coluna={c} />
+         ))}
+diff --git a/src/layouts/MainLayout.jsx b/src/layouts/MainLayout.jsx
+index c6d152c..b6b4abb 100644
+--- a/src/layouts/MainLayout.jsx
++++ b/src/layouts/MainLayout.jsx
+@@ -1,447 +1,287 @@
+-import { Outlet, NavLink } from "react-router-dom";
+-
+-import {
+-
+-  LayoutDashboard,
+-  Users,
+-  Package,
+-  Wrench,
+-  ClipboardList,
+-  CalendarDays,
+-  DollarSign,
+-  BarChart3,
+-  Settings,
+-  ShieldCheck,
+-  LogOut,
+-  Sparkles,
+-  Headset
+-
+-} from "lucide-react";
+-
+-import { getAuthUser, logout } from "../services/api";
+-import AlertaSonoroOS from "../components/AlertaSonoroOS";
+-
+-export default function MainLayout() {
+-
+-  const usuario = getAuthUser();
+-  const nomeUser   = (usuario?.nome || "AÉCIO").toUpperCase();
+-  const perfilUser = (usuario?.perfil || "administrador").replace(/_/g, " ");
+-
+-  const menu = [
+-
+-    {
+-      name: "Dashboard",
+-      icon: <LayoutDashboard size={18} />,
+-      path: "/"
+-    },
+-
+-    {
+-      name: "HERUPU IA",
+-      icon: <Sparkles size={18} />,
+-      path: "/avatar-3d"
+-    },
+-
+-    {
+-      name: "Clientes",
+-      icon: <Users size={18} />,
+-      path: "/clientes"
+-    },
+-
+-    {
+-      name: "Produtos",
+-      icon: <Package size={18} />,
+-      path: "/produtos"
+-    },
+-
+-    {
+-      name: "Ordens",
+-      icon: <Wrench size={18} />,
+-      path: "/ordens"
+-    },
+-
+-    {
+-      name: "Orçamentos",
+-      icon: <ClipboardList size={18} />,
+-      path: "/orcamentos"
+-    },
+-    {
+-      name: "Técnicos",
+-      icon: <ShieldCheck size={18} />,
+-      path: "/tecnicos"
+-    },
+-
+-    {
+-      name: "Agenda",
+-      icon: <CalendarDays size={18} />,
+-      path: "/agenda"
+-    },
+-
+-    {
+-      name: "Suporte",
+-      icon: <Headset size={18} />,
+-      path: "/suporte"
+-    },
+-
+-    {
+-      name: "Financeiro",
+-      icon: <DollarSign size={18} />,
+-      path: "/financeiro"
+-    },
+-
+-    {
+-      name: "Relatórios",
+-      icon: <BarChart3 size={18} />,
+-      path: "/relatorios"
+-    },
+-
+-    {
+-      name: "Configurações",
+-      icon: <Settings size={18} />,
+-      path: "/configuracoes"
+-    }
+-
+-  ];
+-
+-  return (
+-
+-    <div
+-
+-      className="
+-      min-h-screen
+-      bg-cover
+-      bg-center
+-      bg-fixed
+-      flex
+-      relative
+-      "
+-
+-      style={{
+-
+-        backgroundImage:
+-          "url('./fundo-herupu.png')"
+-
+-      }}
+-
+-    >
+-
+-      {/* OVERLAY */}
+-
+-      
+-      {/* SIDEBAR */}
+-
+-      <aside
+-        className="
+-        relative z-10 w-[190px] min-h-screen
+-        border-r border-emerald-500/10
+-        bg-[#020b07]/75 backdrop-blur-xl
+-        p-3 flex flex-col justify-between
+-        "
+-      >
+-
+-        <div>
+-
+-          {/* LOGO */}
+-          <div className="flex items-center justify-center gap-2 mb-5 mt-1">
+-            <img
+-              src="./logo-herupu.png"
+-              alt="HERUPU"
+-              className="w-9 drop-shadow-[0_0_14px_rgba(0,255,120,0.25)]"
+-            />
+-            <div>
+-              <h1 className="text-lg font-black text-white leading-none">HERUPU</h1>
+-              <p className="text-emerald-400 tracking-[3px] text-[9px] mt-0.5">ERP IA</p>
+-            </div>
+-          </div>
+-
+-          {/* MENU */}
+-          <nav className="flex flex-col gap-1">
+-            {menu.map((item) => (
+-              <NavLink
+-                key={item.name}
+-                to={item.path}
+-                className={({ isActive }) =>
+-                  `flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all duration-200 border text-sm
+-                  ${isActive
+-                    ? "bg-emerald-500/15 border-emerald-400/40 text-emerald-300 shadow-[0_0_14px_rgba(0,255,120,0.10)]"
+-                    : "border-transparent text-gray-400 hover:bg-emerald-500/8 hover:text-emerald-300"}`
+-                }
+-              >
+-                {item.icon}
+-                <span className="font-semibold">{item.name}</span>
+-              </NavLink>
+-            ))}
+-          </nav>
+-
+-        </div>
+-
+-        {/* FOOTER */}
+-        <div className="bg-black/20 border border-emerald-500/10 rounded-2xl px-3 py-2.5 backdrop-blur-md flex items-center gap-2">
+-          <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
+-          <span className="text-emerald-300 font-bold text-[11px] leading-tight">SISTEMA ONLINE</span>
+-        </div>
+-
+-      </aside>
+-
+-      {/* CONTEÚDO */}
+-
+-      <main
+-
+-        className="
+-        relative
+-        z-10
+-        flex-1
+-        p-8
+-        overflow-y-auto
+-        "
+-
+-      >
+-
+-        {/* TOPBAR */}
+-
+-        <div
+-
+-          className="
+-          mb-8
+-          grid
+-          grid-cols-1
+-          xl:grid-cols-[1fr_420px]
+-          gap-5
+-          "
+-
+-        >
+-
+-          {/* LEFT */}
+-
+-          <div
+-
+-            className="
+-            bg-[#04110b]/45
+-            border
+-            border-emerald-500/10
+-            rounded-[28px]
+-            px-8
+-            py-6
+-            backdrop-blur-md
+-            shadow-[0_0_20px_rgba(0,255,120,0.04)]
+-            "
+-
+-          >
+-
+-            <div
+-
+-              className="
+-              flex
+-              items-center
+-              justify-between
+-              gap-6
+-              "
+-
+-            >
+-
+-              <div>
+-
+-                <h2 className="text-3xl font-black text-white leading-none">
+-                  HERUPU
+-                </h2>
+-
+-                <p className="text-emerald-400 mt-1.5 text-sm tracking-widest">
+-                  COMMAND CENTER
+-                </p>
+-
+-              </div>
+-
+-              {/* SEARCH */}
+-
+-              <div
+-
+-                className="
+-                flex-1
+-                max-w-[420px]
+-                "
+-
+-              >
+-
+-                <input
+-
+-                  type="text"
+-
+-                  placeholder="Buscar no sistema..."
+-
+-                  className="
+-                  w-full
+-                  bg-black/20
+-                  border
+-                  border-emerald-500/10
+-                  rounded-2xl
+-                  py-4
+-                  px-6
+-                  text-white
+-                  placeholder:text-gray-500
+-                  outline-none
+-                  focus:border-emerald-400
+-                  transition-all
+-                  "
+-
+-                />
+-
+-              </div>
+-
+-            </div>
+-
+-          </div>
+-
+-          {/* RIGHT */}
+-
+-          <div
+-
+-            className="
+-            bg-[#04110b]/45
+-            border
+-            border-emerald-500/10
+-            rounded-[28px]
+-            px-6
+-            py-5
+-            backdrop-blur-md
+-            shadow-[0_0_20px_rgba(0,255,120,0.04)]
+-            "
+-
+-          >
+-
+-            <div
+-
+-              className="
+-              flex
+-              items-center
+-              justify-between
+-              "
+-
+-            >
+-
+-              {/* STATUS */}
+-
+-              <div>
+-
+-                <p
+-
+-                  className="
+-                  text-gray-400
+-                  text-sm
+-                  "
+-
+-                >
+-                  STATUS
+-                </p>
+-
+-                <h3
+-
+-                  className="
+-                  text-emerald-400
+-                  text-xl
+-                  font-black
+-                  mt-1
+-                  "
+-
+-                >
+-                  SISTEMA ONLINE
+-                </h3>
+-
+-              </div>
+-
+-              {/* PERFIL */}
+-
+-              <div
+-
+-                className="
+-                flex
+-                items-center
+-                gap-4
+-                "
+-
+-              >
+-
+-                <div className="text-right">
+-
+-                  <p
+-
+-                    className="
+-                    text-white
+-                    font-bold
+-                    "
+-
+-                  >
+-                    {nomeUser}
+-                  </p>
+-
+-                  <p
+-
+-                    className="
+-                    text-emerald-400
+-                    text-sm
+-                    capitalize
+-                    "
+-
+-                  >
+-                    {perfilUser}
+-                  </p>
+-
+-                </div>
+-
+-                <img
+-
+-                  src="./mascote-herupu.png"
+-
+-                  alt="IA"
+-
+-                  className="
+-                  w-12
+-                  h-12
+-                  object-cover
+-                  rounded-2xl
+-                  border
+-                  border-emerald-400/20
+-                  shadow-[0_0_15px_rgba(0,255,120,0.15)]
+-                  "
+-
+-                />
+-
+-                {/* ALERTA SONORO DE OS NOVA */}
+-                <AlertaSonoroOS />
+-
+-                {/* BOTÃO LOGOUT */}
+-                <button
+-                  onClick={logout}
+-                  title="Sair do sistema"
+-                  className="
+-                    p-3
+-                    rounded-2xl
+-                    border
+-                    border-red-500/20
+-                    bg-red-500/5
+-                    text-red-400
+-                    hover:bg-red-500/15
+-                    hover:border-red-500/40
+-                    transition-all
+-                  "
+-                >
+-                  <LogOut size={18} />
+-                </button>
+-
+-              </div>
+-
+-            </div>
+-
+-          </div>
+-
+-        </div>
+-
+-        {/* PÁGINAS */}
+-
+-        <Outlet />
+-
+-      </main>
+-
+-    </div>
+-
+-  );
+-
+-}
+\ No newline at end of file
++import { useEffect, useState } from "react";
++import { Outlet, NavLink, useLocation } from "react-router-dom";
++
++import {
++
++  LayoutDashboard,
++  Users,
++  Package,
++  Wrench,
++  ClipboardList,
++  CalendarDays,
++  DollarSign,
++  BarChart3,
++  Settings,
++  ShieldCheck,
++  LogOut,
++  Sparkles,
++  Headset,
++  Menu,
++  X
++
++} from "lucide-react";
++
++import { getAuthUser, logout } from "../services/api";
++import AlertaSonoroOS from "../components/AlertaSonoroOS";
++
++export default function MainLayout() {
++
++  const usuario = getAuthUser();
++  const nomeUser   = (usuario?.nome || "AÉCIO").toUpperCase();
++  const perfilUser = (usuario?.perfil || "administrador").replace(/_/g, " ");
++
++  // Celular: menu em gaveta (abre no ☰, fecha ao trocar de página)
++  const [menuAberto, setMenuAberto] = useState(false);
++  const location = useLocation();
++  useEffect(() => { setMenuAberto(false); }, [location.pathname]);
++  useEffect(() => {
++    document.body.style.overflow = menuAberto ? "hidden" : "";
++    return () => { document.body.style.overflow = ""; };
++  }, [menuAberto]);
++
++  const menu = [
++
++    {
++      name: "Dashboard",
++      icon: <LayoutDashboard size={18} />,
++      path: "/"
++    },
++
++    {
++      name: "HERUPU IA",
++      icon: <Sparkles size={18} />,
++      path: "/avatar-3d"
++    },
++
++    {
++      name: "Clientes",
++      icon: <Users size={18} />,
++      path: "/clientes"
++    },
++
++    {
++      name: "Produtos",
++      icon: <Package size={18} />,
++      path: "/produtos"
++    },
++
++    {
++      name: "Ordens",
++      icon: <Wrench size={18} />,
++      path: "/ordens"
++    },
++
++    {
++      name: "Orçamentos",
++      icon: <ClipboardList size={18} />,
++      path: "/orcamentos"
++    },
++    {
++      name: "Técnicos",
++      icon: <ShieldCheck size={18} />,
++      path: "/tecnicos"
++    },
++
++    {
++      name: "Agenda",
++      icon: <CalendarDays size={18} />,
++      path: "/agenda"
++    },
++
++    {
++      name: "Suporte",
++      icon: <Headset size={18} />,
++      path: "/suporte"
++    },
++
++    {
++      name: "Financeiro",
++      icon: <DollarSign size={18} />,
++      path: "/financeiro"
++    },
++
++    {
++      name: "Relatórios",
++      icon: <BarChart3 size={18} />,
++      path: "/relatorios"
++    },
++
++    {
++      name: "Configurações",
++      icon: <Settings size={18} />,
++      path: "/configuracoes"
++    }
++
++  ];
++
++  return (
++
++    <div
++      className="min-h-screen bg-cover bg-center bg-fixed flex relative"
++      style={{ backgroundImage: "url('./fundo-herupu.png')" }}
++    >
++
++      {/* FUNDO ESCURO ATRÁS DA GAVETA (celular) */}
++      {menuAberto && (
++        <div
++          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden"
++          onClick={() => setMenuAberto(false)}
++        />
++      )}
++
++      {/* SIDEBAR — fixa no computador, gaveta no celular */}
++      <aside
++        className={`
++        fixed lg:relative inset-y-0 left-0 z-40 lg:z-10
++        w-[240px] lg:w-[190px] min-h-screen
++        border-r border-emerald-500/10
++        bg-[#020b07]/95 lg:bg-[#020b07]/75 backdrop-blur-xl
++        p-3 flex flex-col justify-between
++        transition-transform duration-300
++        ${menuAberto ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0
++        overflow-y-auto
++        `}
++      >
++        <div>
++          {/* LOGO */}
++          <div className="flex items-center justify-between lg:justify-center gap-2 mb-5 mt-1">
++            <div className="flex items-center gap-2">
++              <img
++                src="./logo-herupu.png"
++                alt="HERUPU"
++                className="w-9 drop-shadow-[0_0_14px_rgba(0,255,120,0.25)]"
++              />
++              <div>
++                <h1 className="text-lg font-black text-white leading-none">HERUPU</h1>
++                <p className="text-emerald-400 tracking-[3px] text-[9px] mt-0.5">ERP IA</p>
++              </div>
++            </div>
++            <button
++              className="lg:hidden p-2 rounded-xl text-gray-300 hover:text-white"
++              onClick={() => setMenuAberto(false)}
++              aria-label="Fechar menu"
++            >
++              <X size={22} />
++            </button>
++          </div>
++
++          {/* MENU */}
++          <nav className="flex flex-col gap-1">
++            {menu.map((item) => (
++              <NavLink
++                key={item.name}
++                to={item.path}
++                end={item.path === "/"}
++                className={({ isActive }) =>
++                  `flex items-center gap-2.5 px-3 py-3 lg:py-2 rounded-xl transition-all duration-200 border text-base lg:text-sm
++                  ${isActive
++                    ? "bg-emerald-500/15 border-emerald-400/40 text-emerald-300 shadow-[0_0_14px_rgba(0,255,120,0.10)]"
++                    : "border-transparent text-gray-400 hover:bg-emerald-500/8 hover:text-emerald-300"}`
++                }
++              >
++                {item.icon}
++                <span className="font-semibold">{item.name}</span>
++              </NavLink>
++            ))}
++          </nav>
++        </div>
++
++        {/* FOOTER */}
++        <div className="mt-4 bg-black/20 border border-emerald-500/10 rounded-2xl px-3 py-2.5 backdrop-blur-md flex items-center gap-2">
++          <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
++          <span className="text-emerald-300 font-bold text-[11px] leading-tight">SISTEMA ONLINE</span>
++        </div>
++      </aside>
++
++      {/* CONTEÚDO */}
++      <main className="relative z-10 flex-1 min-w-0 p-3 sm:p-5 lg:p-8 overflow-y-auto">
++
++        {/* TOPO COMPACTO — celular */}
++        <div className="lg:hidden sticky top-0 z-20 -mx-3 -mt-3 sm:-mx-5 sm:-mt-5 mb-4 px-3 py-2.5 flex items-center gap-3 bg-[#020b07]/90 backdrop-blur-xl border-b border-emerald-500/10">
++          <button
++            onClick={() => setMenuAberto(true)}
++            className="p-2.5 rounded-xl border border-emerald-500/20 text-emerald-300 bg-emerald-500/5"
++            aria-label="Abrir menu"
++          >
++            <Menu size={22} />
++          </button>
++          <img src="./logo-herupu.png" alt="" className="w-8" />
++          <div className="flex-1 min-w-0">
++            <p className="text-white font-black leading-none">HERUPU</p>
++            <p className="text-emerald-400 text-[11px] truncate capitalize">{perfilUser} · {nomeUser.split(" ")[0]}</p>
++          </div>
++          <AlertaSonoroOS />
++          <button
++            onClick={logout}
++            title="Sair do sistema"
++            className="p-2.5 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400"
++          >
++            <LogOut size={18} />
++          </button>
++        </div>
++
++        {/* TOPBAR — computador */}
++        <div className="hidden lg:grid mb-8 grid-cols-1 xl:grid-cols-[1fr_420px] gap-5">
++
++          {/* LEFT */}
++          <div className="bg-[#04110b]/45 border border-emerald-500/10 rounded-[28px] px-8 py-6 backdrop-blur-md shadow-[0_0_20px_rgba(0,255,120,0.04)]">
++            <div className="flex items-center justify-between gap-6">
++              <div>
++                <h2 className="text-3xl font-black text-white leading-none">HERUPU</h2>
++                <p className="text-emerald-400 mt-1.5 text-sm tracking-widest">COMMAND CENTER</p>
++              </div>
++              {/* SEARCH */}
++              <div className="flex-1 max-w-[420px]">
++                <input
++                  type="text"
++                  placeholder="Buscar no sistema..."
++                  className="w-full bg-black/20 border border-emerald-500/10 rounded-2xl py-4 px-6 text-white placeholder:text-gray-500 outline-none focus:border-emerald-400 transition-all"
++                />
++              </div>
++            </div>
++          </div>
++
++          {/* RIGHT */}
++          <div className="bg-[#04110b]/45 border border-emerald-500/10 rounded-[28px] px-6 py-5 backdrop-blur-md shadow-[0_0_20px_rgba(0,255,120,0.04)]">
++            <div className="flex items-center justify-between">
++              {/* STATUS */}
++              <div>
++                <p className="text-gray-400 text-sm">STATUS</p>
++                <h3 className="text-emerald-400 text-xl font-black mt-1">SISTEMA ONLINE</h3>
++              </div>
++              {/* PERFIL */}
++              <div className="flex items-center gap-4">
++                <div className="text-right">
++                  <p className="text-white font-bold">{nomeUser}</p>
++                  <p className="text-emerald-400 text-sm capitalize">{perfilUser}</p>
++                </div>
++                <img
++                  src="./mascote-herupu.png"
++                  alt="IA"
++                  className="w-12 h-12 object-cover rounded-2xl border border-emerald-400/20 shadow-[0_0_15px_rgba(0,255,120,0.15)]"
++                />
++                {/* ALERTA SONORO DE OS NOVA */}
++                <AlertaSonoroOS />
++                {/* BOTÃO LOGOUT */}
++                <button
++                  onClick={logout}
++                  title="Sair do sistema"
++                  className="p-3 rounded-2xl border border-red-500/20 bg-red-500/5 text-red-400 hover:bg-red-500/15 hover:border-red-500/40 transition-all"
++                >
++                  <LogOut size={18} />
++                </button>
++              </div>
++            </div>
++          </div>
++        </div>
++
++        {/* PÁGINAS */}
++        <Outlet />
++
++      </main>
++
++    </div>
++
++  );
++
++}
+diff --git a/src/pages/ClienteDetalhes.jsx b/src/pages/ClienteDetalhes.jsx
+index efbb6b4..11ad15b 100644
+--- a/src/pages/ClienteDetalhes.jsx
++++ b/src/pages/ClienteDetalhes.jsx
+@@ -45,9 +45,9 @@ export default function ClienteDetalhes() {
+ 
+     <div
+       className="
+-        scale-[0.60]
++        lg:scale-[0.60]
+         origin-top-left
+-        w-[165%]
++        lg:w-[165%]
+         min-h-screen
+         space-y-5
+       "
+diff --git a/src/pages/Dashboard.jsx b/src/pages/Dashboard.jsx
+index 7f2cb55..dffa0a5 100644
+--- a/src/pages/Dashboard.jsx
++++ b/src/pages/Dashboard.jsx
+@@ -103,7 +103,7 @@ export default function Dashboard() {
+       (ordem) =>
+ 
+         ordem.status === "aguardando_peca"
+-        || ordem.status === "AGUARDANDO PEÃ‡A"
++        || ordem.status === "AGUARDANDO PEÇA"
+ 
+     );
+ 
+@@ -119,7 +119,7 @@ export default function Dashboard() {
+         tipo: "andamento",
+ 
+         titulo:
+-          "Aguardando peÃ§a",
++          "Aguardando peça",
+ 
+         mensagem:
+           `${ordem.cliente_nome} aguardando componente.`,
+@@ -170,9 +170,9 @@ export default function Dashboard() {
+ 
+     <div
+       className="
+-        scale-[0.60]
++        lg:scale-[0.60]
+         origin-top-left
+-        w-[165%]
++        lg:w-[165%]
+         min-h-screen
+         space-y-5
+       "
+@@ -198,7 +198,7 @@ export default function Dashboard() {
+         />
+ 
+         <KpiCard
+-          title="TÃ‰CNICOS ATIVOS"
++          title="TÉCNICOS ATIVOS"
+           value={tecnicos.filter((t) => t.ativo).length}
+           icon={<Activity size={18} />}
+           to="/tecnicos"
+@@ -212,7 +212,7 @@ export default function Dashboard() {
+         />
+ 
+         <KpiCard
+-          title="ORÃ‡AMENTOS"
++          title="ORÇAMENTOS"
+           value="0"
+           icon={<ClipboardList size={18} />}
+           to="/orcamentos"
+@@ -276,13 +276,13 @@ export default function Dashboard() {
+         />
+ 
+         <GlassPanel
+-          title="TÃ‰CNICOS ONLINE"
++          title="TÉCNICOS ONLINE"
+           subtitle="Status operacional ao vivo"
+           icon={<Activity size={18} />}
+         >
+ 
+           {tecnicos.length === 0 ? (
+-            <p className="text-gray-500 text-sm">Nenhum tÃ©cnico cadastrado ainda.</p>
++            <p className="text-gray-500 text-sm">Nenhum técnico cadastrado ainda.</p>
+           ) : (
+             tecnicos.slice(0, 6).map((t) => {
+               const status = (t.status || "").toLowerCase();
+diff --git a/src/pages/Ordens.jsx b/src/pages/Ordens.jsx
+index 690d39d..443cbbc 100644
+--- a/src/pages/Ordens.jsx
++++ b/src/pages/Ordens.jsx
+@@ -268,14 +268,14 @@ export default function Ordens() {
+         subtitle="COMMAND CENTER"
+       />
+ 
+-      <div className="scale-[0.60] origin-top-left w-[165%] min-h-screen space-y-4">
++      <div className="lg:scale-[0.60] origin-top-left lg:w-[165%] min-h-screen space-y-4">
+ 
+         {/* TOPO */}
+ 
+         <div
+           className="
+             grid
+-            grid-cols-[1fr_340px]
++            grid-cols-1 lg:grid-cols-[1fr_340px]
+             gap-4
+             items-start
+           "
