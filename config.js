@@ -7,7 +7,7 @@
    ===================================================================== */
 window.HERUPU_CONFIG = {
   // >>> TROQUE AQUI pelo número real (só números, com 55 + DDD) <<<
-  whatsappNumber: "5511999999999",
+  whatsappNumber: "5596984153280",
 
   // Mensagem que já aparece escrita ao abrir a conversa (pode mudar):
   whatsappMessage: "Olá! Vim pelo app HERUPU IA e quero falar com vocês.",
