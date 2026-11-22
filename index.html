@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>HERUPU IA</title>
+  <meta name="description" content="Atendimento e automação inteligente da HERUPU IA direto no WhatsApp." />
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#4F46E5" />
+
+  <!-- Ícones -->
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+
+  <!-- iOS: comportamento de "app instalado" -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="HERUPU IA" />
+
+  <style>
+    :root {
+      --bg-top: #0b1020;
+      --bg-mid: #171a3a;
+      --card: rgba(255, 255, 255, 0.06);
+      --card-border: rgba(255, 255, 255, 0.12);
+      --text: #f5f6ff;
+      --muted: #b3b8d8;
+      --brand: #6d5cf5;
+      --brand-2: #9333ea;
+      --wa: #25d366;
+      --wa-dark: #1eb457;
+      --radius: 20px;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      min-height: 100dvh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 600px at 50% -10%, #3a2f8f 0%, rgba(58,47,143,0) 60%),
+        linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 100%);
+      background-attachment: fixed;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: calc(env(safe-area-inset-top) + 28px) 20px calc(env(safe-area-inset-bottom) + 28px);
+    }
+    .wrap { width: 100%; max-width: 440px; margin: auto; }
+
+    /* Cabeçalho / logo */
+    .logo {
+      width: 96px; height: 96px; border-radius: 24px; margin: 8px auto 18px;
+      display: block; box-shadow: 0 18px 40px rgba(79, 70, 229, 0.45);
+    }
+    h1 { font-size: 28px; line-height: 1.15; text-align: center; margin: 0 0 6px; letter-spacing: -0.02em; }
+    .tagline { text-align: center; color: var(--muted); margin: 0 0 26px; font-size: 15px; }
+
+    /* Cartão principal */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 22px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    }
+    .card + .card { margin-top: 16px; }
+    .card h2 { margin: 0 0 4px; font-size: 17px; }
+    .card p.sub { margin: 0 0 16px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+
+    /* Botões */
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%; border: 0; cursor: pointer;
+      font-size: 16.5px; font-weight: 700; color: #fff;
+      padding: 16px 18px; border-radius: 14px; text-decoration: none;
+      transition: transform .06s ease, filter .15s ease, opacity .15s ease;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-wa { background: linear-gradient(180deg, var(--wa) 0%, var(--wa-dark) 100%); box-shadow: 0 10px 24px rgba(37, 211, 102, 0.35); }
+    .btn-install { background: linear-gradient(180deg, var(--brand) 0%, var(--brand-2) 100%); box-shadow: 0 10px 24px rgba(109, 92, 245, 0.4); margin-top: 12px; }
+    .btn svg { width: 22px; height: 22px; flex: none; }
+    .btn[hidden] { display: none; }
+
+    /* Passo a passo de instalação (iOS / genérico) */
+    .steps { margin: 4px 0 0; padding: 0; list-style: none; }
+    .steps li {
+      display: flex; gap: 12px; align-items: flex-start;
+      padding: 12px 0; border-top: 1px solid rgba(255,255,255,.08); font-size: 14.5px; line-height: 1.5;
+    }
+    .steps li:first-child { border-top: 0; }
+    .num {
+      flex: none; width: 26px; height: 26px; border-radius: 50%;
+      background: rgba(109,92,245,.25); border: 1px solid rgba(109,92,245,.6);
+      display: grid; place-items: center; font-size: 13px; font-weight: 700; color: #cfc8ff;
+    }
+    .steps b { color: #fff; }
+    .ios-icon { display: inline-block; vertical-align: -3px; }
+
+    .note {
+      margin-top: 14px; font-size: 13px; color: var(--muted); text-align: center; line-height: 1.5;
+    }
+    .ok-badge {
+      display: none; align-items: center; gap: 8px; justify-content: center;
+      background: rgba(37,211,102,.14); border: 1px solid rgba(37,211,102,.5);
+      color: #b6f5cf; padding: 12px; border-radius: 12px; font-size: 14px; font-weight: 600; margin-top: 12px;
+    }
+    footer { margin-top: 26px; text-align: center; color: var(--muted); font-size: 12.5px; }
+    footer a { color: #cfc8ff; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <img class="logo" src="icons/icon-512.png" alt="Logo HERUPU IA" width="96" height="96" />
+    <h1 id="brandTitle">HERUPU IA</h1>
+    <p class="tagline" id="tagline">Automação inteligente no WhatsApp</p>
+
+    <!-- Ação principal -->
+    <div class="card">
+      <h2>Fale com a gente</h2>
+      <p class="sub">Toque no botão e abra a conversa no WhatsApp — é rápido.</p>
+      <a class="btn btn-wa" id="waBtn" href="#" rel="noopener">
+        <svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M16 3C9.4 3 4 8.4 4 15c0 2.1.6 4.1 1.6 5.9L4 29l8.3-1.6c1.7.9 3.6 1.4 5.7 1.4 6.6 0 12-5.4 12-12S22.6 3 16 3zm0 21.8c-1.8 0-3.5-.5-5-1.4l-.4-.2-4.9 1 1-4.8-.3-.4C5.5 18.3 5 16.7 5 15 5 9 9.9 4.1 16 4.1S27 9 27 15 22.1 24.8 16 24.8zm5.7-7.4c-.3-.2-1.8-.9-2.1-1-.3-.1-.5-.2-.7.2-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.2-1.3-.5-2.5-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6l.5-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.2.2 2.1 3.3 5.2 4.6.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.8-.7 2-1.4.3-.7.3-1.3.2-1.4-.1-.2-.3-.3-.6-.4z"/></svg>
+        Abrir no WhatsApp
+      </a>
+    </div>
+
+    <!-- Instalação -->
+    <div class="card" id="installCard">
+      <h2>Instalar o aplicativo</h2>
+      <p class="sub" id="installSub">Instale a HERUPU IA no seu celular para acessar direto pelo ícone, como um app.</p>
+
+      <!-- Botão nativo (Android/Chrome/Edge quando disponível) -->
+      <button class="btn btn-install" id="installBtn" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 12 5 5 5-5"/><path d="M5 21h14"/></svg>
+        Instalar aplicativo
+      </button>
+
+      <div class="ok-badge" id="okBadge">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        App instalado! Abra pelo ícone na tela inicial.
+      </div>
+
+      <!-- Passo a passo iOS (iPhone/iPad) -->
+      <ol class="steps" id="iosSteps" hidden>
+        <li><span class="num">1</span><div>Toque no botão <b>Compartilhar</b>
+          <svg class="ios-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#cfc8ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m8 7 4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>
+          na barra do Safari.</div></li>
+        <li><span class="num">2</span><div>Role e toque em <b>Adicionar à Tela de Início</b>.</div></li>
+        <li><span class="num">3</span><div>Confirme em <b>Adicionar</b>. Pronto — o ícone aparece na tela do celular. 🎉</div></li>
+      </ol>
+
+      <!-- Passo a passo genérico Android quando o botão nativo não aparece -->
+      <ol class="steps" id="androidSteps" hidden>
+        <li><span class="num">1</span><div>Toque no menu <b>⋮</b> (canto superior) do navegador.</div></li>
+        <li><span class="num">2</span><div>Escolha <b>Instalar aplicativo</b> ou <b>Adicionar à tela inicial</b>.</div></li>
+        <li><span class="num">3</span><div>Confirme. Pronto — o ícone aparece na tela do celular. 🎉</div></li>
+      </ol>
+
+      <p class="note" id="installNote"></p>
+    </div>
+
+    <footer>
+      HERUPU IA &middot; feito para o seu WhatsApp
+    </footer>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    (function () {
+      var cfg = window.HERUPU_CONFIG || {};
+      var number = String(cfg.whatsappNumber || "").replace(/\D/g, "");
+      var msg = encodeURIComponent(cfg.whatsappMessage || "");
+
+      // Aplica textos configuráveis
+      if (cfg.brandName) {
+        document.getElementById("brandTitle").textContent = cfg.brandName;
+        document.title = cfg.brandName;
+      }
+      if (cfg.tagline) document.getElementById("tagline").textContent = cfg.tagline;
+
+      // Link do WhatsApp
+      var waBtn = document.getElementById("waBtn");
+      waBtn.href = "https://wa.me/" + number + (msg ? "?text=" + msg : "");
+
+      // Detecção de plataforma / modo
+      var ua = navigator.userAgent || "";
+      var isIOS = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      var isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+
+      var installBtn = document.getElementById("installBtn");
+      var iosSteps = document.getElementById("iosSteps");
+      var androidSteps = document.getElementById("androidSteps");
+      var installSub = document.getElementById("installSub");
+      var okBadge = document.getElementById("okBadge");
+      var installNote = document.getElementById("installNote");
+
+      if (isStandalone) {
+        // Já está rodando como app instalado
+        installSub.textContent = "Você já está usando o app instalado. É só usar o botão do WhatsApp acima. ✅";
+        installBtn.hidden = true;
+      } else if (isIOS) {
+        // iOS não expõe botão nativo — mostra passo a passo do Safari
+        iosSteps.hidden = false;
+        installSub.textContent = "No iPhone/iPad, instale em 3 passos pelo Safari:";
+      } else {
+        // Android/desktop: aguarda o evento nativo; se não vier, mostra passos genéricos
+        androidSteps.hidden = false;
+        var deferredPrompt = null;
+
+        window.addEventListener("beforeinstallprompt", function (e) {
+          e.preventDefault();
+          deferredPrompt = e;
+          androidSteps.hidden = true;         // temos o botão nativo, esconde o passo a passo
+          installBtn.hidden = false;
+          installSub.textContent = "Toque no botão abaixo para instalar a HERUPU IA no seu celular.";
+        });
+
+        installBtn.addEventListener("click", function () {
+          if (!deferredPrompt) return;
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then(function (choice) {
+            if (choice && choice.outcome === "accepted") {
+              installNote.textContent = "Instalando… o ícone vai aparecer na tela do celular.";
+            }
+            deferredPrompt = null;
+            installBtn.hidden = true;
+          });
+        });
+      }
+
+      window.addEventListener("appinstalled", function () {
+        installBtn.hidden = true;
+        iosSteps.hidden = true;
+        androidSteps.hidden = true;
+        okBadge.style.display = "flex";
+        installSub.textContent = "";
+      });
+
+      // Registra o service worker (necessário para instalar e funcionar offline)
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("sw.js").catch(function (err) {
+            console.warn("Falha ao registrar o service worker:", err);
+          });
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
