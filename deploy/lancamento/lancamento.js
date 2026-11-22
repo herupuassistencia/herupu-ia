@@ -247,5 +247,43 @@ router.post('/admin/lancamento/lgpd/:id/concluir', authRequired, requireRole('ad
   res.json({ ok: true });
 }));
 
+// ---------- conferência de pagamentos no Asaas (reserva do webhook) ----------
+// A cada 10 min consulta no Asaas as cobranças que ainda constam pendentes aqui.
+// Se o Asaas diz que foram pagas, processa como se o webhook tivesse chegado.
+async function sincronizarAsaas() {
+  let asaas;
+  try { asaas = require('../services/asaas.service'); } catch (_) { return { ok: false, motivo: 'sem asaas.service' }; }
+  const cfg = await asaas.getConfig();
+  if (!asaas.isRealMode(cfg)) return { ok: false, motivo: 'Asaas em modo simulado' };
+  const r = await pool.query(
+    `SELECT id, asaas_id, status::text AS status FROM asaas_cobrancas
+      WHERE status::text IN ('PENDING','OVERDUE','AWAITING_RISK_ANALYSIS')
+        AND asaas_id LIKE 'pay_%' AND criado_em > NOW() - INTERVAL '60 days'
+      ORDER BY id DESC LIMIT 100`);
+  const atualizadas = [];
+  for (const c of r.rows) {
+    try {
+      const resp = await fetch(`${cfg.api_url}/payments/${c.asaas_id}`, {
+        headers: { access_token: cfg.api_key, 'User-Agent': 'HERUPU/2.0' },
+      });
+      if (!resp.ok) continue;
+      const pay = await resp.json();
+      if (pay?.status && pay.status !== c.status) {
+        await asaas.processarWebhook({ event: 'SINCRONIZACAO', payment: pay });
+        atualizadas.push({ id: c.id, de: c.status, para: pay.status });
+      }
+    } catch (e) { console.warn('[asaas-sync]', c.asaas_id, e.message); }
+  }
+  if (atualizadas.length) console.log('[asaas-sync] atualizadas:', JSON.stringify(atualizadas));
+  return { ok: true, verificadas: r.rows.length, atualizadas };
+}
+if (!global.__herupuAsaasSync) {
+  global.__herupuAsaasSync = setInterval(() => sincronizarAsaas().catch((e) => console.warn('[asaas-sync]', e.message)), 10 * 60 * 1000);
+  setTimeout(() => sincronizarAsaas().catch(() => {}), 90 * 1000);
+}
+router.post('/admin/lancamento/sincronizar-asaas', authRequired, requireRole('admin', 'operador'), h(async (req, res) => {
+  res.json(await sincronizarAsaas());
+}));
+
 module.exports = router;
 module.exports.VERSAO_TERMOS = VERSAO_TERMOS;
